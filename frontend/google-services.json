@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "312200592181",
+    "project_id": "the-adiraa",
+    "storage_bucket": "the-adiraa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:312200592181:android:0ce2fa837b231c25676a7c",
+        "android_client_info": {
+          "package_name": "com.adiraa.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmDxp8DcmKp5UshR7PZ53GxwyNML7LL6Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

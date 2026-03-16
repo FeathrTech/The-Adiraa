@@ -1,0 +1,692 @@
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  Image,
+  useWindowDimensions,
+  StatusBar,
+} from "react-native";
+import { useEffect, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+
+import { fetchRoles } from "../../api/roleApi";
+import { fetchSites } from "../../api/siteApi";
+import { updateUser } from "../../api/userApi";
+
+import { useRoute, useNavigation } from "@react-navigation/native";
+import { useAuthStore } from "../../store/authStore";
+import { can, ACTION_PERMISSIONS } from "../../config/permissionMap";
+
+// ─── Palette ──────────────────────────────────────────────────────────────────
+const C = {
+  gold: "#C9A227",
+  bg: "#0A0A0A",
+  surface: "#131313",
+  card: "#1A1A1A",
+  inputBg: "#1F1F1F",
+  border: "#2A2A2A",
+  borderGold: "rgba(201,162,39,0.35)",
+  white: "#FFFFFF",
+  muted: "#777",
+  faint: "#333",
+  red: "#E57373",
+  orange: "#F97316",
+};
+
+// ─── Limits ───────────────────────────────────────────────────────────────────
+const LIMITS = {
+  name:     { min: 2, max: 60 },
+  email:    { max: 254 },     // RFC 5321
+  password: { min: 8, max: 128 },
+  shift:    { max: 5 },       // HH:MM
+};
+
+// ─── Responsive hook ──────────────────────────────────────────────────────────
+function useResponsive() {
+  const { width, height } = useWindowDimensions();
+  const isTablet = width >= 768;
+  const vw = width / 100;
+  const vh = height / 100;
+  const colWidth = isTablet ? width * 0.55 : width;
+  const cvw = colWidth / 100;
+  return { width, height, vw, vh, cvw, isTablet };
+}
+
+// ─── Field label ──────────────────────────────────────────────────────────────
+function FieldLabel({ icon, label, hint, optional, required, cvw, isTablet }) {
+  return (
+    <View style={{ marginBottom: 6 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Ionicons name={icon} size={isTablet ? cvw * 2 : cvw * 4} color={C.gold} />
+        <Text style={{ color: C.white, fontWeight: "700", fontSize: isTablet ? cvw * 2.2 : cvw * 3.8 }}>{label}</Text>
+        {required && <Text style={{ color: C.red, fontSize: isTablet ? cvw * 2 : cvw * 3.8, fontWeight: "800", marginLeft: -2 }}>*</Text>}
+        {optional && <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>(optional)</Text>}
+      </View>
+      {hint && (
+        <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.7 : cvw * 2.8, marginTop: 2, marginLeft: isTablet ? cvw * 2.5 : cvw * 5.5 }}>
+          {hint}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+// ─── Styled input ─────────────────────────────────────────────────────────────
+function StyledInput({
+  value, onChangeText, placeholder, keyboardType, secureTextEntry,
+  editable = true, isPhone, maxLength, showCount, cvw, isTablet,
+}) {
+  const [focused, setFocused] = useState(false);
+
+  const currentLength = value ? value.length : 0;
+  const isNearLimit = maxLength && currentLength >= Math.floor(maxLength * 0.85);
+  const isAtLimit = maxLength && currentLength >= maxLength;
+
+  const handleChange = (text) => {
+    if (isPhone) {
+      const digits = text.replace(/[^0-9]/g, "").slice(0, 10);
+      onChangeText(digits);
+    } else if (maxLength) {
+      if (text.length <= maxLength) onChangeText(text);
+    } else {
+      onChangeText(text);
+    }
+  };
+
+  const phoneCount = isPhone ? currentLength : 0;
+
+  // ── Phone variant ──
+  if (isPhone) {
+    return (
+      <View style={{ marginBottom: isTablet ? cvw * 1.8 : cvw * 4 }}>
+        <View style={{
+          backgroundColor: editable ? C.inputBg : C.faint,
+          borderWidth: 1,
+          borderColor: !editable ? C.border : focused ? C.gold : C.border,
+          borderRadius: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 4,
+        }}>
+          <TextInput
+            value={value}
+            onChangeText={handleChange}
+            placeholder={placeholder}
+            placeholderTextColor={C.muted}
+            keyboardType="numeric"
+            editable={editable}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            maxLength={10}
+            style={{
+              flex: 1,
+              color: editable ? C.white : C.muted,
+              fontSize: isTablet ? cvw * 2.2 : cvw * 3.8,
+              paddingVertical: isTablet ? cvw * 1.2 : cvw * 3,
+            }}
+          />
+          <Text style={{
+            color: phoneCount === 10 ? C.gold : C.muted,
+            fontSize: isTablet ? cvw * 1.8 : cvw * 3,
+            fontWeight: "600",
+            marginLeft: 6,
+          }}>
+            {phoneCount}/10
+          </Text>
+        </View>
+        {phoneCount > 0 && phoneCount < 10 && (
+          <Text style={{ color: C.red, fontSize: isTablet ? cvw * 1.6 : cvw * 2.8, marginTop: 4, marginLeft: 2 }}>
+            Phone number must be 10 digits
+          </Text>
+        )}
+      </View>
+    );
+  }
+
+  // ── Standard variant ──
+  const counterColor = isAtLimit ? C.red : isNearLimit ? C.orange : C.muted;
+
+  return (
+    <View style={{ marginBottom: isTablet ? cvw * 1.8 : cvw * 4 }}>
+      <TextInput
+        value={value}
+        onChangeText={handleChange}
+        placeholder={placeholder}
+        placeholderTextColor={C.muted}
+        keyboardType={keyboardType || "default"}
+        secureTextEntry={secureTextEntry}
+        editable={editable}
+        maxLength={maxLength}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          backgroundColor: editable ? C.inputBg : C.faint,
+          borderWidth: 1,
+          borderColor: !editable
+            ? C.border
+            : focused
+              ? isAtLimit ? C.red : C.gold
+              : isAtLimit ? "rgba(229,115,115,0.5)" : C.border,
+          borderRadius: 12,
+          paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 4,
+          paddingVertical: isTablet ? cvw * 1.2 : cvw * 3,
+          color: editable ? C.white : C.muted,
+          fontSize: isTablet ? cvw * 2.2 : cvw * 3.8,
+        }}
+      />
+      {showCount && maxLength && editable && (
+        <Text style={{
+          color: counterColor,
+          fontSize: isTablet ? cvw * 1.6 : cvw * 2.8,
+          textAlign: "right",
+          marginTop: 4,
+          marginRight: 2,
+        }}>
+          {currentLength}/{maxLength}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+// ─── Username row ─────────────────────────────────────────────────────────────
+function UsernameRow({ username, cvw, isTablet }) {
+  return (
+    <View style={{ marginBottom: isTablet ? cvw * 1.8 : cvw * 4 }}>
+      <FieldLabel icon="at-outline" label="Username" hint="Login ID — cannot be changed" cvw={cvw} isTablet={isTablet} />
+      <View style={{
+        backgroundColor: C.faint, borderWidth: 1, borderColor: C.border,
+        borderRadius: 12,
+        paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 4,
+        paddingVertical: isTablet ? cvw * 1.2 : cvw * 3,
+        flexDirection: "row", alignItems: "center", gap: 8,
+      }}>
+        <Ionicons name="lock-closed-outline" size={isTablet ? cvw * 2 : cvw * 3.5} color={C.muted} />
+        <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2.2 : cvw * 3.8 }}>{username}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Section header ───────────────────────────────────────────────────────────
+function SectionHeader({ title, icon, cvw, isTablet }) {
+  return (
+    <View style={{
+      flexDirection: "row", alignItems: "center", gap: 8,
+      marginBottom: isTablet ? cvw * 1.5 : cvw * 4,
+      marginTop: isTablet ? cvw * 1.5 : cvw * 3,
+    }}>
+      <View style={{
+        width: isTablet ? cvw * 4 : cvw * 7,
+        height: isTablet ? cvw * 4 : cvw * 7,
+        borderRadius: cvw * 4,
+        backgroundColor: "rgba(201,162,39,0.12)",
+        borderWidth: 1, borderColor: C.borderGold,
+        alignItems: "center", justifyContent: "center",
+      }}>
+        <Ionicons name={icon} size={isTablet ? cvw * 2 : cvw * 3.5} color={C.gold} />
+      </View>
+      <Text style={{ color: C.gold, fontSize: isTablet ? cvw * 2.2 : cvw * 3.5, fontWeight: "700", letterSpacing: 2, textTransform: "uppercase" }}>
+        {title}
+      </Text>
+      <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+    </View>
+  );
+}
+
+// ─── Selector chip ────────────────────────────────────────────────────────────
+function SelectorChip({ label, selected, onPress, cvw, isTablet }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      style={{
+        flexDirection: "row", alignItems: "center", gap: 6,
+        backgroundColor: selected ? C.gold : C.inputBg,
+        borderWidth: 1, borderColor: selected ? C.gold : C.border,
+        borderRadius: 12,
+        paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 4,
+        paddingVertical: isTablet ? cvw * 1 : cvw * 2.5,
+        marginBottom: isTablet ? cvw * 1 : cvw * 2.5,
+      }}
+    >
+      {selected && <Ionicons name="checkmark-circle" size={isTablet ? cvw * 2 : cvw * 3.8} color="#000" />}
+      <Text style={{ color: selected ? "#000" : C.muted, fontWeight: selected ? "700" : "400", fontSize: isTablet ? cvw * 2.2 : cvw * 3.8 }}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Upload button ────────────────────────────────────────────────────────────
+function UploadButton({ icon, label, hint, selected, onPress, preview, cvw, isTablet }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      style={{
+        backgroundColor: selected ? "rgba(201,162,39,0.08)" : C.inputBg,
+        borderWidth: 1, borderColor: selected ? C.borderGold : C.border,
+        borderRadius: 14,
+        padding: isTablet ? cvw * 2 : cvw * 4,
+        flexDirection: "row", alignItems: "center", gap: cvw * 3,
+        marginBottom: isTablet ? cvw * 1.5 : cvw * 3,
+      }}
+    >
+      <View style={{
+        width: isTablet ? cvw * 7 : cvw * 13,
+        height: isTablet ? cvw * 7 : cvw * 13,
+        borderRadius: 10,
+        backgroundColor: selected ? "rgba(201,162,39,0.15)" : C.faint,
+        borderWidth: 1, borderColor: selected ? C.borderGold : C.border,
+        alignItems: "center", justifyContent: "center",
+        overflow: "hidden", flexShrink: 0,
+      }}>
+        {preview
+          ? <Image source={{ uri: preview }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+          : <Ionicons name={icon} size={isTablet ? cvw * 3 : cvw * 5.5} color={selected ? C.gold : C.muted} />
+        }
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ color: selected ? C.white : C.muted, fontWeight: selected ? "700" : "400", fontSize: isTablet ? cvw * 2.2 : cvw * 3.8, marginBottom: 3 }}>
+          {label}
+        </Text>
+        <Text numberOfLines={1} style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>{hint}</Text>
+      </View>
+      <Ionicons name={selected ? "checkmark-circle" : "cloud-upload-outline"} size={isTablet ? cvw * 2.4 : cvw * 4.5} color={selected ? C.gold : C.muted} />
+    </TouchableOpacity>
+  );
+}
+
+// ─── Screen header ────────────────────────────────────────────────────────────
+function ScreenHeader({ navigation, cvw, vw, vh, isTablet }) {
+  return (
+    <View style={{
+      flexDirection: "row", alignItems: "center",
+      paddingHorizontal: isTablet ? vw * 3 : vw * 5,
+      paddingTop: vh * 2,
+      paddingBottom: isTablet ? vh * 1.5 : vh * 1.8,
+      borderBottomWidth: 1, borderBottomColor: C.border,
+    }}>
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={{
+          flexDirection: "row", alignItems: "center", gap: 4,
+          backgroundColor: C.faint,
+          paddingHorizontal: 12, paddingVertical: 7,
+          borderRadius: 10, borderWidth: 1, borderColor: C.borderGold,
+          marginRight: 14,
+        }}
+      >
+        <Ionicons name="arrow-back" size={isTablet ? cvw * 2.2 : 18} color={C.gold} />
+        {isTablet && <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>Back</Text>}
+      </TouchableOpacity>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8, letterSpacing: 3, fontWeight: "700", textTransform: "uppercase", marginBottom: 2 }}>
+          Staff Management
+        </Text>
+        <Text style={{ color: C.white, fontSize: isTablet ? cvw * 3.5 : cvw * 5.5, fontWeight: "800", letterSpacing: -0.3 }}>
+          Edit Staff
+        </Text>
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+        <Text style={{ color: C.red, fontWeight: "800", fontSize: isTablet ? cvw * 2 : cvw * 3.5 }}>*</Text>
+        <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>Required</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const isValidTime = (t) => !t || /^([01]\d|2[0-3]):([0-5]\d)$/.test(t);
+const isValidEmail = (e) => !e || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+export default function EditStaffScreen() {
+  const route = useRoute();
+  const navigation = useNavigation();
+  const userPermissions = useAuthStore((s) => s.permissions);
+  const { vw, vh, cvw, isTablet } = useResponsive();
+
+  const user = route.params?.user ?? null;
+
+  const [name, setName] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [shiftStart, setShiftStart] = useState("");
+  const [shiftEnd, setShiftEnd] = useState("");
+  const [roles, setRoles] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [selectedSite, setSelectedSite] = useState(null);
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [idProof, setIdProof] = useState(null);
+  const [existingProfileUrl, setExistingProfileUrl] = useState(null);
+  const [existingIdProofUrl, setExistingIdProofUrl] = useState(null);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!can(userPermissions, ACTION_PERMISSIONS.staff.edit)) navigation.goBack();
+  }, [userPermissions]);
+
+  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      setMobile(user.mobile || "");
+      setEmail(user.email || "");
+      setShiftStart(user.shiftStartTime || "");
+      setShiftEnd(user.shiftEndTime || "");
+      setExistingProfileUrl(user.profilePhotoUrl || null);
+      setExistingIdProofUrl(user.idProofUrl || null);
+      setSelectedRole(Array.isArray(user.roles) && user.roles.length > 0 ? user.roles[0].id : null);
+      setSelectedSite(user.location?.id || null);
+    }
+  }, [user]);
+
+  const load = async () => {
+    try {
+      const roleData = await fetchRoles();
+      const siteData = await fetchSites();
+      setRoles(Array.isArray(roleData) ? roleData : []);
+      setSites(Array.isArray(siteData) ? siteData : []);
+    } catch {
+      Alert.alert("Error", "Failed to load roles/locations");
+    } finally {
+      setInitialLoading(false);
+    }
+  };
+
+  const pickProfilePhoto = async () => {
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6 });
+    if (!result.canceled) setProfilePhoto(result.assets[0]);
+  };
+
+  const pickIdProof = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: ["image/*", "application/pdf"] });
+    if (!result.canceled) setIdProof(result.assets[0]);
+  };
+
+  const validate = () => {
+    if (!name.trim()) return "Full name is required";
+    if (name.trim().length < LIMITS.name.min) return `Name must be at least ${LIMITS.name.min} characters`;
+    if (mobile && mobile.length !== 10) return "Mobile number must be exactly 10 digits";
+    if (email && !isValidEmail(email)) return "Enter a valid email address";
+    if (password && password.length < LIMITS.password.min)
+      return `New password must be at least ${LIMITS.password.min} characters`;
+    if (shiftStart && !isValidTime(shiftStart)) return "Shift start must be in HH:MM format (e.g. 09:00)";
+    if (shiftEnd && !isValidTime(shiftEnd)) return "Shift end must be in HH:MM format (e.g. 18:00)";
+    if (roles.length > 0 && !selectedRole) return "Please select a role";
+    if (sites.length > 0 && !selectedSite) return "Please select a location";
+    return null;
+  };
+
+  const handleUpdate = async () => {
+    const err = validate();
+    if (err) { Alert.alert("Validation Error", err); return; }
+    try {
+      setSaving(true);
+      const formData = new FormData();
+      formData.append("name", name.trim());
+      if (mobile) formData.append("mobile", mobile);
+      if (email) formData.append("email", email.trim());
+      if (password) formData.append("password", password);
+      if (shiftStart) formData.append("shiftStartTime", shiftStart);
+      if (shiftEnd) formData.append("shiftEndTime", shiftEnd);
+      if (selectedRole) formData.append("roleIds", JSON.stringify([selectedRole]));
+      if (selectedSite) formData.append("locationId", selectedSite);
+      if (profilePhoto) formData.append("profilePhoto", { uri: profilePhoto.uri, name: "profile.jpg", type: "image/jpeg" });
+      if (idProof) formData.append("idProof", { uri: idProof.uri, name: idProof.name || "document.pdf", type: idProof.mimeType || "application/pdf" });
+      await updateUser(user.id, formData);
+      Alert.alert("Success", "Staff updated");
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert("Error", error.response?.data?.message || "Failed to update staff");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!user) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center", alignItems: "center" }}>
+        <Ionicons name="person-outline" size={48} color={C.muted} />
+        <Text style={{ color: C.muted, marginTop: 12, fontSize: 15 }}>No user found</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (initialLoading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center", alignItems: "center" }}>
+        <StatusBar barStyle="light-content" />
+        <ActivityIndicator size="large" color={C.gold} />
+        <Text style={{ color: C.muted, marginTop: 12, letterSpacing: 1.5, fontSize: 13 }}>LOADING</Text>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+      <StatusBar barStyle="light-content" />
+      <View style={{ flex: 1, paddingHorizontal: isTablet ? vw * 6 : vw * 5, paddingTop: vh * 3, paddingBottom: isTablet ? vh * 3 : vh * 4 }}>
+        <View style={{ backgroundColor: C.surface, borderRadius: 28, borderWidth: 1, borderColor: C.borderGold, flex: 1, overflow: "hidden" }}>
+
+          <ScreenHeader navigation={navigation} cvw={cvw} vw={vw} vh={vh} isTablet={isTablet} />
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: isTablet ? vw * 3 : vw * 5, paddingTop: vh * 2, paddingBottom: 80 }}
+          >
+
+            {/* ── PERSONAL INFO ── */}
+            <SectionHeader title="Personal Info" icon="person-outline" cvw={cvw} isTablet={isTablet} />
+
+            <FieldLabel icon="text-outline" label="Full Name" hint={`2–${LIMITS.name.max} characters`} required cvw={cvw} isTablet={isTablet} />
+            <StyledInput
+              value={name} onChangeText={setName}
+              placeholder="e.g. Rahul Sharma"
+              maxLength={LIMITS.name.max}
+              showCount
+              cvw={cvw} isTablet={isTablet}
+            />
+
+            {isTablet ? (
+              <View style={{ flexDirection: "row", gap: cvw * 3 }}>
+                <View style={{ flex: 1 }}>
+                  <FieldLabel icon="call-outline" label="Mobile Number" hint="10-digit number" optional cvw={cvw} isTablet={isTablet} />
+                  <StyledInput value={mobile} onChangeText={setMobile} placeholder="e.g. 9876543210" isPhone cvw={cvw} isTablet={isTablet} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <FieldLabel icon="mail-outline" label="Email" hint="Notifications and recovery" optional cvw={cvw} isTablet={isTablet} />
+                  <StyledInput
+                    value={email} onChangeText={setEmail}
+                    placeholder="e.g. rahul@company.com"
+                    keyboardType="email-address"
+                    maxLength={LIMITS.email.max}
+                    showCount
+                    cvw={cvw} isTablet={isTablet}
+                  />
+                </View>
+              </View>
+            ) : (
+              <>
+                <FieldLabel icon="call-outline" label="Mobile Number" hint="10-digit number" optional cvw={cvw} isTablet={isTablet} />
+                <StyledInput value={mobile} onChangeText={setMobile} placeholder="e.g. 9876543210" isPhone cvw={cvw} isTablet={isTablet} />
+                <FieldLabel icon="mail-outline" label="Email" hint="Notifications and recovery" optional cvw={cvw} isTablet={isTablet} />
+                <StyledInput
+                  value={email} onChangeText={setEmail}
+                  placeholder="e.g. rahul@company.com"
+                  keyboardType="email-address"
+                  maxLength={LIMITS.email.max}
+                  showCount
+                  cvw={cvw} isTablet={isTablet}
+                />
+              </>
+            )}
+
+            <UsernameRow username={user.username} cvw={cvw} isTablet={isTablet} />
+
+            <FieldLabel
+              icon="lock-closed-outline" label="New Password"
+              hint={`Leave blank to keep current${password ? ` · min ${LIMITS.password.min} characters` : ""}`}
+              optional cvw={cvw} isTablet={isTablet}
+            />
+            <StyledInput
+              value={password} onChangeText={setPassword}
+              placeholder="Enter new password to change"
+              secureTextEntry
+              maxLength={LIMITS.password.max}
+              showCount
+              cvw={cvw} isTablet={isTablet}
+            />
+            {/* Min-length hint shown while typing if below minimum */}
+            {password.length > 0 && password.length < LIMITS.password.min && (
+              <Text style={{
+                color: C.red,
+                fontSize: isTablet ? cvw * 1.6 : cvw * 2.8,
+                marginTop: -isTablet ? cvw * 1.4 : cvw * 3,
+                marginBottom: isTablet ? cvw * 1 : cvw * 2,
+                marginLeft: 2,
+              }}>
+                Password must be at least {LIMITS.password.min} characters
+              </Text>
+            )}
+
+            {/* ── SHIFT TIMINGS ── */}
+            <SectionHeader title="Shift Timings" icon="time-outline" cvw={cvw} isTablet={isTablet} />
+            <View style={{ flexDirection: "row", gap: cvw * 3 }}>
+              <View style={{ flex: 1 }}>
+                <FieldLabel icon="sunny-outline" label="Start Time" hint="24-hr format (HH:MM)" optional cvw={cvw} isTablet={isTablet} />
+                <StyledInput
+                  value={shiftStart} onChangeText={setShiftStart}
+                  placeholder="09:00"
+                  keyboardType="numeric"
+                  maxLength={LIMITS.shift.max}
+                  cvw={cvw} isTablet={isTablet}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <FieldLabel icon="moon-outline" label="End Time" hint="24-hr format (HH:MM)" optional cvw={cvw} isTablet={isTablet} />
+                <StyledInput
+                  value={shiftEnd} onChangeText={setShiftEnd}
+                  placeholder="18:00"
+                  keyboardType="numeric"
+                  maxLength={LIMITS.shift.max}
+                  cvw={cvw} isTablet={isTablet}
+                />
+              </View>
+            </View>
+
+            {/* ── ROLE ── */}
+            {roles.length > 0 && (
+              <>
+                <SectionHeader title="Role" icon="shield-outline" cvw={cvw} isTablet={isTablet} />
+                <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3, marginBottom: isTablet ? cvw * 1.5 : cvw * 3 }}>
+                  Controls what this staff member can access in the system
+                </Text>
+                {isTablet ? (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: cvw * 1.5, marginBottom: cvw * 2 }}>
+                    {roles.map((role) => (
+                      <View key={role.id} style={{ minWidth: "30%" }}>
+                        <SelectorChip label={role.name} selected={selectedRole === role.id} onPress={() => setSelectedRole(role.id)} cvw={cvw} isTablet={isTablet} />
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  roles.map((role) => (
+                    <SelectorChip key={role.id} label={role.name} selected={selectedRole === role.id} onPress={() => setSelectedRole(role.id)} cvw={cvw} isTablet={isTablet} />
+                  ))
+                )}
+              </>
+            )}
+
+            {/* ── ASSIGN LOCATION ── */}
+            {sites.length > 0 && (
+              <>
+                <SectionHeader title="Assign Location" icon="location-outline" cvw={cvw} isTablet={isTablet} />
+                <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3, marginBottom: isTablet ? cvw * 1.5 : cvw * 3 }}>
+                  Site assigned for attendance tracking and radius checks
+                </Text>
+                {isTablet ? (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: cvw * 1.5, marginBottom: cvw * 2 }}>
+                    {sites.map((site) => (
+                      <View key={site.id} style={{ minWidth: "30%" }}>
+                        <SelectorChip label={site.name} selected={selectedSite === site.id} onPress={() => setSelectedSite(site.id === selectedSite ? null : site.id)} cvw={cvw} isTablet={isTablet} />
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  sites.map((site) => (
+                    <SelectorChip key={site.id} label={site.name} selected={selectedSite === site.id} onPress={() => setSelectedSite(site.id === selectedSite ? null : site.id)} cvw={cvw} isTablet={isTablet} />
+                  ))
+                )}
+              </>
+            )}
+
+            {/* ── DOCUMENTS ── */}
+            <SectionHeader title="Documents" icon="document-outline" cvw={cvw} isTablet={isTablet} />
+            <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3, marginBottom: isTablet ? cvw * 1.5 : cvw * 3 }}>
+              Replace existing files by uploading new ones — leave unchanged to keep current
+            </Text>
+
+            <UploadButton
+              icon="camera-outline"
+              label={profilePhoto ? "Profile Photo Updated" : "Change Profile Photo"}
+              hint={profilePhoto ? profilePhoto.uri?.split("/").pop() : existingProfileUrl ? "Photo on file — tap to replace" : "No photo yet — tap to upload"}
+              selected={!!profilePhoto}
+              onPress={pickProfilePhoto}
+              preview={profilePhoto?.uri || (existingProfileUrl && !profilePhoto ? existingProfileUrl : null)}
+              cvw={cvw} isTablet={isTablet}
+            />
+            <UploadButton
+              icon="id-card-outline"
+              label={idProof ? "ID Proof Updated" : "Change ID Proof"}
+              hint={idProof ? (idProof.name || idProof.uri?.split("/").pop()) : existingIdProofUrl ? "ID proof on file — tap to replace" : "No ID proof yet — tap to upload"}
+              selected={!!idProof}
+              onPress={pickIdProof}
+              preview={idProof?.uri && !idProof.name?.endsWith(".pdf") ? idProof.uri : null}
+              cvw={cvw} isTablet={isTablet}
+            />
+
+            <View style={{ height: 1, backgroundColor: C.border, marginVertical: isTablet ? cvw * 2 : cvw * 5 }} />
+
+            {/* ── SAVE BUTTON ── */}
+            <TouchableOpacity
+              onPress={handleUpdate}
+              disabled={saving}
+              activeOpacity={0.8}
+              style={{
+                backgroundColor: saving ? C.faint : C.gold,
+                borderRadius: 14,
+                paddingVertical: isTablet ? cvw * 1.6 : cvw * 4,
+                alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8,
+                opacity: saving ? 0.7 : 1,
+              }}
+            >
+              {saving
+                ? <ActivityIndicator color="#000" size="small" />
+                : <Ionicons name="save-outline" size={isTablet ? cvw * 2.6 : cvw * 5} color="#000" />
+              }
+              <Text style={{ color: saving ? C.muted : "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.6 : cvw * 4, letterSpacing: 0.3, textTransform: "uppercase" }}>
+                {saving ? "Saving Changes…" : "Save Changes"}
+              </Text>
+            </TouchableOpacity>
+
+          </ScrollView>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
