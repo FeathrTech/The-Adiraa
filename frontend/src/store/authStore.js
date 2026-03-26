@@ -16,12 +16,9 @@ const extractPermissions = (user) => {
   );
 };
 
-// ─── Register push token and save to backend ─────────────────────────────────
-// Called after login and on session restore.
-// Safe to call multiple times — silently skips on emulators or if denied.
 async function registerPushToken() {
   try {
-    if (!Device.isDevice) return; // emulator — skip
+    if (!Device.isDevice) return;
 
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;
@@ -34,14 +31,13 @@ async function registerPushToken() {
     if (finalStatus !== "granted") return;
 
     const { data: token } = await Notifications.getExpoPushTokenAsync({
-      projectId: "544c2015-7cf0-4794-a774-b12e84b543a2", // from app.json extra.eas.projectId
+      projectId: "544c2015-7cf0-4794-a774-b12e84b543a2",
     });
 
     await api.patch("/users/me/push-token", { pushToken: token });
 
     console.log("✅ Push token registered:", token);
   } catch (err) {
-    // Non-fatal — app works fine without push tokens
     console.warn("Push token registration failed:", err?.message);
   }
 }
@@ -68,18 +64,29 @@ export const useAuthStore = create((set) => ({
       loading: false,
     });
 
-    // Register push token after login — fire and forget
     registerPushToken();
   },
 
-  // ================= LOGOUT =================
+  // ================= SET USER ================= ← ADD THIS
+  // Called after self-upload (profile photo / id proof)
+  // Updates user in state AND persists to AsyncStorage
+  setUser: async (updatedUser) => {
+    const permissions = extractPermissions(updatedUser);
+
+    // Persist updated user to AsyncStorage so it survives app restart
+    await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+
+    set({
+      user: updatedUser,
+      permissions: [...new Set(permissions)],
+    });
+  },
+
   // ================= LOGOUT =================
   logout: async () => {
     try {
-      // Tell backend to clear pushToken and delete the session
       await api.post("/auth/logout");
     } catch (err) {
-      // Non-fatal — proceed with local logout regardless
       console.warn("Logout API failed:", err?.message);
     }
 
@@ -115,25 +122,13 @@ export const useAuthStore = create((set) => ({
           loading: false,
         });
 
-        // Re-register on every app open — token can rotate
         registerPushToken();
-
         return;
       }
 
-      set({
-        user: null,
-        token: null,
-        permissions: [],
-        loading: false,
-      });
+      set({ user: null, token: null, permissions: [], loading: false });
     } catch (error) {
-      set({
-        user: null,
-        token: null,
-        permissions: [],
-        loading: false,
-      });
+      set({ user: null, token: null, permissions: [], loading: false });
     }
   },
 }));

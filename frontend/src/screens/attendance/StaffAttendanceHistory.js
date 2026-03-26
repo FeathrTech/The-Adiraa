@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../../store/authStore";
 import api from "../../api/axios";
 
-// ─── Palette (matches StaffDashboard) ────────────────────────────────────────
+// ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
   gold: "#C9A227",
   goldLight: "#E8C45A",
@@ -89,6 +89,16 @@ function calcDuration(checkIn, checkOut) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+// ✅ Returns true if a photo URL's attendance date is older than 15 days
+function isPhotoExpired(attendanceDateStr) {
+  if (!attendanceDateStr) return false;
+  const attendanceDate = new Date(attendanceDateStr + "T00:00:00");
+  const now = new Date();
+  const diffMs = now - attendanceDate;
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays > 15;
+}
+
 function getStatusMeta(record) {
   if (!record) return { label: "Absent", color: C.red, bg: C.redBg, border: C.redBorder, dot: "#ef4444" };
   if (record.isAbsent) return { label: "Absent", color: C.red, bg: C.redBg, border: C.redBorder, dot: "#ef4444" };
@@ -105,11 +115,12 @@ export default function StaffAttendanceHistory() {
   const user = useAuthStore((s) => s.user);
 
   const [loading, setLoading] = useState(true);
-  const [records, setRecords] = useState([]);          // full month records
+  const [records, setRecords] = useState([]);
   const [calendarMarked, setCalendarMarked] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
-  const [selectedRecord, setSelectedRecord] = useState(null); // day detail modal
-  const [photoModal, setPhotoModal] = useState(null);  // { uri, label }
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [photoModal, setPhotoModal] = useState(null); // { uri, label, attendanceDate }
+  const [photoLoadError, setPhotoLoadError] = useState(false); // ✅ tracks if modal image failed to load
   const [summaryStats, setSummaryStats] = useState({ daysWorked: 0, lateDays: 0, absents: 0, avgHours: "--" });
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
@@ -121,22 +132,17 @@ export default function StaffAttendanceHistory() {
     if (!user) return;
     try {
       setLoading(true);
-      // Uses the same endpoint pattern as admin analytics but for self
       const res = await api.get(`/attendance/my-history?month=${yearMonth}`);
-      const data = res.data; // expected: [{ attendanceDate, checkInTime, checkOutTime, checkInPhoto, checkOutPhoto, isLate, isHalfDay, isAbsent, checkInLat, checkInLng, checkOutLat, checkOutLng }]
+      const data = res.data;
 
       setRecords(data);
 
-      // Build calendar markers
       const marked = {};
       let worked = 0, late = 0, absent = 0, totalMs = 0, countedDays = 0;
 
       data.forEach((r) => {
         const meta = getStatusMeta(r);
-        marked[r.attendanceDate] = {
-          marked: true,
-          dotColor: meta.dot,
-        };
+        marked[r.attendanceDate] = { marked: true, dotColor: meta.dot };
         if (r.isAbsent) { absent++; return; }
         if (r.checkInTime) {
           worked++;
@@ -182,15 +188,23 @@ export default function StaffAttendanceHistory() {
     setSelectedRecord(rec);
   };
 
-  // ─── Loading ──────────────────────────────────────────────────────────────
+  // ✅ Reset error state when photo modal opens/closes
+  const openPhotoModal = (uri, label, attendanceDate) => {
+    setPhotoLoadError(false);
+    setPhotoModal({ uri, label, attendanceDate });
+  };
+
+  const closePhotoModal = () => {
+    setPhotoModal(null);
+    setPhotoLoadError(false);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center", alignItems: "center" }}>
         <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color={C.gold} />
-        <Text style={{ color: C.muted, marginTop: 12, fontSize: cvw * 3.5, letterSpacing: 1.5 }}>
-          LOADING
-        </Text>
+        <Text style={{ color: C.muted, marginTop: 12, fontSize: cvw * 3.5, letterSpacing: 1.5 }}>LOADING</Text>
       </SafeAreaView>
     );
   }
@@ -206,7 +220,6 @@ export default function StaffAttendanceHistory() {
     }),
   };
 
-  // ─── Summary stat tiles ───────────────────────────────────────────────────
   const tiles = [
     { label: "Days Worked", value: summaryStats.daysWorked, icon: "checkmark-circle-outline", color: C.green },
     { label: "Late Days", value: summaryStats.lateDays, icon: "time-outline", color: C.orange },
@@ -222,7 +235,7 @@ export default function StaffAttendanceHistory() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: isTablet ? vw * 5 : vw * 4,
-            paddingTop: vh * 2,
+            paddingTop: vh * 4,
             paddingBottom: vh * 6,
           }}
         >
@@ -240,16 +253,10 @@ export default function StaffAttendanceHistory() {
               <Ionicons name="arrow-back" size={isTablet ? cvw * 2.2 : 18} color={C.white} />
             </TouchableOpacity>
             <View>
-              <Text style={{
-                color: C.gold, fontSize: cvw * 2.2, letterSpacing: 3,
-                fontWeight: "700", textTransform: "uppercase",
-              }}>
+              <Text style={{ color: C.gold, fontSize: cvw * 2.2, letterSpacing: 3, fontWeight: "700", textTransform: "uppercase" }}>
                 Staff Portal
               </Text>
-              <Text style={{
-                color: C.white, fontSize: isTablet ? cvw * 4 : cvw * 5.5,
-                fontWeight: "800", letterSpacing: -0.5,
-              }}>
+              <Text style={{ color: C.white, fontSize: isTablet ? cvw * 4 : cvw * 5.5, fontWeight: "800", letterSpacing: -0.5 }}>
                 My Attendance
               </Text>
             </View>
@@ -278,20 +285,14 @@ export default function StaffAttendanceHistory() {
                 }}>
                   <Ionicons name={t.icon} size={isTablet ? cvw * 2.2 : cvw * 4} color={t.color} />
                 </View>
-                <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 2.8, marginBottom: 3 }}>
-                  {t.label}
-                </Text>
-                <Text style={{ color: t.color, fontSize: isTablet ? cvw * 3.5 : cvw * 6, fontWeight: "800" }}>
-                  {t.value}
-                </Text>
+                <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 2.8, marginBottom: 3 }}>{t.label}</Text>
+                <Text style={{ color: t.color, fontSize: isTablet ? cvw * 3.5 : cvw * 6, fontWeight: "800" }}>{t.value}</Text>
               </View>
             ))}
           </View>
 
-          {/* ── SECTION LABEL ── */}
-          <SectionLabel title="Attendance Calendar" icon="calendar-outline" cvw={cvw} isTablet={isTablet} />
-
           {/* ── CALENDAR ── */}
+          <SectionLabel title="Attendance Calendar" icon="calendar-outline" cvw={cvw} isTablet={isTablet} />
           <View style={{
             backgroundColor: C.card, borderRadius: 20,
             borderWidth: 1, borderColor: C.border,
@@ -315,14 +316,11 @@ export default function StaffAttendanceHistory() {
                 textSectionTitleColor: C.muted,
               }}
             />
-
-            {/* Legend */}
             <View style={{
               flexDirection: "row", flexWrap: "wrap",
               gap: isTablet ? cvw * 2 : cvw * 4,
               paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 5,
-              paddingBottom: cvw * 4,
-              paddingTop: 4,
+              paddingBottom: cvw * 4, paddingTop: 4,
             }}>
               {[
                 { label: "Present", color: C.gold },
@@ -342,11 +340,10 @@ export default function StaffAttendanceHistory() {
           {selectedDate && (
             <>
               <SectionLabel title={fmtDate(selectedDate)} icon="today-outline" cvw={cvw} isTablet={isTablet} />
-
               {selectedRecord ? (
                 <DayDetailCard
                   record={selectedRecord}
-                  onPhotoPress={(uri, label) => setPhotoModal({ uri, label })}
+                  onPhotoPress={openPhotoModal}
                   onClear={() => { setSelectedDate(null); setSelectedRecord(null); }}
                   cvw={cvw} vh={vh} vw={vw} isTablet={isTablet}
                 />
@@ -358,18 +355,11 @@ export default function StaffAttendanceHistory() {
                   paddingVertical: vh * 5, marginBottom: vh * 2.5,
                 }}>
                   <Ionicons name="calendar-clear-outline" size={cvw * 10} color={C.faint} />
-                  <Text style={{ color: C.muted, marginTop: 12, fontSize: cvw * 3.5, fontWeight: "600" }}>
-                    No attendance record
-                  </Text>
-                  <Text style={{ color: C.faint, marginTop: 4, fontSize: cvw * 3 }}>
-                    {selectedDate}
-                  </Text>
+                  <Text style={{ color: C.muted, marginTop: 12, fontSize: cvw * 3.5, fontWeight: "600" }}>No attendance record</Text>
+                  <Text style={{ color: C.faint, marginTop: 4, fontSize: cvw * 3 }}>{selectedDate}</Text>
                   <TouchableOpacity
                     onPress={() => { setSelectedDate(null); setSelectedRecord(null); }}
-                    style={{
-                      marginTop: 16, paddingHorizontal: 20, paddingVertical: 8,
-                      borderRadius: 10, borderWidth: 1, borderColor: C.border,
-                    }}
+                    style={{ marginTop: 16, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.border }}
                   >
                     <Text style={{ color: C.muted, fontSize: cvw * 3 }}>Clear selection</Text>
                   </TouchableOpacity>
@@ -378,9 +368,8 @@ export default function StaffAttendanceHistory() {
             </>
           )}
 
-          {/* ── RECENT RECORDS LIST ── */}
+          {/* ── RECORDS LIST ── */}
           <SectionLabel title="This Month's Records" icon="list-outline" cvw={cvw} isTablet={isTablet} />
-
           {records.length === 0 ? (
             <View style={{
               backgroundColor: C.card, borderRadius: 20,
@@ -399,15 +388,10 @@ export default function StaffAttendanceHistory() {
                   record={r}
                   isSelected={selectedDate === r.attendanceDate}
                   onPress={() => {
-                    if (selectedDate === r.attendanceDate) {
-                      setSelectedDate(null); setSelectedRecord(null);
-                    } else {
-                      setSelectedDate(r.attendanceDate);
-                      setSelectedRecord(r);
-                      // scroll is manual; user can see detail card above
-                    }
+                    if (selectedDate === r.attendanceDate) { setSelectedDate(null); setSelectedRecord(null); }
+                    else { setSelectedDate(r.attendanceDate); setSelectedRecord(r); }
                   }}
-                  onPhotoPress={(uri, label) => setPhotoModal({ uri, label })}
+                  onPhotoPress={openPhotoModal}
                   cvw={cvw} vh={vh} isTablet={isTablet}
                 />
               ))
@@ -420,7 +404,7 @@ export default function StaffAttendanceHistory() {
         visible={!!photoModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setPhotoModal(null)}
+        onRequestClose={closePhotoModal}
       >
         <View style={{
           flex: 1, backgroundColor: "rgba(0,0,0,0.95)",
@@ -432,40 +416,81 @@ export default function StaffAttendanceHistory() {
             padding: 18, width: "100%", maxWidth: 480,
           }}>
             {/* Header */}
-            <View style={{
-              flexDirection: "row", alignItems: "center",
-              justifyContent: "space-between", marginBottom: 14,
-            }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Ionicons name="camera-outline" size={18} color={C.gold} />
                 <Text style={{ color: C.gold, fontWeight: "700", fontSize: 14, letterSpacing: 1 }}>
                   {photoModal?.label?.toUpperCase()}
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={() => setPhotoModal(null)}
-                style={{
-                  backgroundColor: C.faint, borderRadius: 8, padding: 6,
-                }}
-              >
+              <TouchableOpacity onPress={closePhotoModal} style={{ backgroundColor: C.faint, borderRadius: 8, padding: 6 }}>
                 <Ionicons name="close" size={20} color={C.muted} />
               </TouchableOpacity>
             </View>
 
-            {photoModal?.uri ? (
-              <Image
-                source={{ uri: photoModal.uri }}
-                resizeMode="contain"
-                style={{ width: "100%", height: 340, borderRadius: 16 }}
-              />
-            ) : (
-              <View style={{ alignItems: "center", padding: 40 }}>
-                <Ionicons name="image-outline" size={60} color={C.muted} />
-                <Text style={{ color: C.muted, marginTop: 10, textAlign: "center", fontSize: 13 }}>
-                  Photo unavailable
-                </Text>
-              </View>
-            )}
+            {/* ✅ Three states:
+                1. Photo expired (>15 days old) — show expiry notice without even trying to load
+                2. Photo URL exists but failed to load (deleted from R2) — show expiry notice
+                3. Photo loaded fine — show it */}
+            {(() => {
+              const expired = isPhotoExpired(photoModal?.attendanceDate);
+
+              if (expired || photoLoadError) {
+                return (
+                  <View style={{
+                    alignItems: "center",
+                    paddingVertical: 32,
+                    backgroundColor: "rgba(229,115,115,0.06)",
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: C.redBorder,
+                  }}>
+                    <View style={{
+                      width: 60, height: 60, borderRadius: 30,
+                      backgroundColor: C.redBg,
+                      borderWidth: 1, borderColor: C.redBorder,
+                      alignItems: "center", justifyContent: "center",
+                      marginBottom: 14,
+                    }}>
+                      <Ionicons name="trash-outline" size={26} color={C.red} />
+                    </View>
+                    <Text style={{ color: C.red, fontWeight: "700", fontSize: 15, marginBottom: 6 }}>
+                      Photo Deleted
+                    </Text>
+                    <Text style={{ color: C.muted, fontSize: 12.5, textAlign: "center", lineHeight: 18, paddingHorizontal: 16 }}>
+                      Attendance photos are automatically deleted{"\n"}after 15 days to protect your storage.
+                    </Text>
+                    <View style={{
+                      marginTop: 14,
+                      flexDirection: "row", alignItems: "center", gap: 6,
+                      backgroundColor: C.redBg,
+                      borderWidth: 1, borderColor: C.redBorder,
+                      borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5,
+                    }}>
+                      <Ionicons name="time-outline" size={13} color={C.red} />
+                      <Text style={{ color: C.red, fontSize: 12, fontWeight: "600" }}>
+                        15-day retention policy
+                      </Text>
+                    </View>
+                  </View>
+                );
+              }
+
+              return photoModal?.uri ? (
+                <Image
+                  source={{ uri: photoModal.uri }}
+                  resizeMode="contain"
+                  style={{ width: "100%", height: 340, borderRadius: 16 }}
+                  // ✅ If image fails to load (R2 returned 404/403), show the expiry screen
+                  onError={() => setPhotoLoadError(true)}
+                />
+              ) : (
+                <View style={{ alignItems: "center", padding: 40 }}>
+                  <Ionicons name="image-outline" size={60} color={C.muted} />
+                  <Text style={{ color: C.muted, marginTop: 10, textAlign: "center", fontSize: 13 }}>Photo unavailable</Text>
+                </View>
+              );
+            })()}
           </View>
         </View>
       </Modal>
@@ -477,6 +502,7 @@ export default function StaffAttendanceHistory() {
 function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet }) {
   const meta = getStatusMeta(record);
   const duration = calcDuration(record.checkInTime, record.checkOutTime);
+  const photoExpired = isPhotoExpired(record.attendanceDate);
 
   return (
     <View style={{
@@ -486,10 +512,7 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
       marginBottom: vh * 2.5,
     }}>
       {/* Top row: status + clear */}
-      <View style={{
-        flexDirection: "row", alignItems: "center",
-        justifyContent: "space-between", marginBottom: vh * 2,
-      }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: vh * 2 }}>
         <View style={{
           flexDirection: "row", alignItems: "center", gap: 8,
           backgroundColor: meta.bg, borderWidth: 1, borderColor: meta.border,
@@ -502,11 +525,7 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
         </View>
         <TouchableOpacity
           onPress={onClear}
-          style={{
-            flexDirection: "row", alignItems: "center", gap: 4,
-            backgroundColor: C.faint, borderRadius: 8,
-            paddingHorizontal: 10, paddingVertical: 6,
-          }}
+          style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: C.faint, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
         >
           <Ionicons name="close" size={14} color={C.muted} />
           <Text style={{ color: C.muted, fontSize: cvw * 2.8 }}>Clear</Text>
@@ -539,12 +558,24 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
         </View>
       )}
 
+      {/* ✅ Photo expiry notice inside day detail card */}
+      {photoExpired && (record.checkInPhoto || record.checkOutPhoto) && (
+        <View style={{
+          flexDirection: "row", alignItems: "center", gap: 8,
+          backgroundColor: "rgba(229,115,115,0.06)",
+          borderWidth: 1, borderColor: C.redBorder,
+          borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+          marginBottom: vh * 1.5,
+        }}>
+          <Ionicons name="information-circle-outline" size={15} color={C.red} />
+          <Text style={{ color: C.red, fontSize: cvw * 2.8, flex: 1 }}>
+            Attendance photos for this day have been deleted (15-day retention policy)
+          </Text>
+        </View>
+      )}
+
       {/* Time blocks */}
-      <View style={{
-        flexDirection: isTablet ? "row" : "column",
-        gap: isTablet ? vw * 2 : vh * 1.5,
-        marginBottom: vh * 2,
-      }}>
+      <View style={{ flexDirection: isTablet ? "row" : "column", gap: isTablet ? vw * 2 : vh * 1.5, marginBottom: vh * 2 }}>
         <TimeBlock
           label="Check In"
           time={fmtTime(record.checkInTime)}
@@ -553,9 +584,10 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
           bg={C.greenBg}
           border={C.greenBorder}
           photo={record.checkInPhoto}
+          photoExpired={photoExpired}
           lat={record.checkInLat}
           lng={record.checkInLng}
-          onPhotoPress={() => onPhotoPress(record.checkInPhoto, "Check In Photo")}
+          onPhotoPress={() => onPhotoPress(record.checkInPhoto, "Check In Photo", record.attendanceDate)}
           cvw={cvw} vh={vh} isTablet={isTablet}
         />
         <TimeBlock
@@ -566,9 +598,10 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
           bg={C.redBg}
           border={C.redBorder}
           photo={record.checkOutPhoto}
+          photoExpired={photoExpired}
           lat={record.checkOutLat}
           lng={record.checkOutLng}
-          onPhotoPress={() => onPhotoPress(record.checkOutPhoto, "Check Out Photo")}
+          onPhotoPress={() => onPhotoPress(record.checkOutPhoto, "Check Out Photo", record.attendanceDate)}
           cvw={cvw} vh={vh} isTablet={isTablet}
         />
       </View>
@@ -577,8 +610,7 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
       <View style={{
         backgroundColor: C.surface, borderRadius: 14,
         borderWidth: 1, borderColor: C.border,
-        flexDirection: "row", alignItems: "center",
-        justifyContent: "space-between",
+        flexDirection: "row", alignItems: "center", justifyContent: "space-between",
         paddingHorizontal: cvw * 4, paddingVertical: vh * 1.4,
       }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -597,15 +629,10 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
   );
 }
 
-// ─── Time Block (check-in or check-out) ──────────────────────────────────────
-function TimeBlock({ label, time, icon, color, bg, border, photo, lat, lng, onPhotoPress, cvw, vh, isTablet }) {
+// ─── Time Block ───────────────────────────────────────────────────────────────
+function TimeBlock({ label, time, icon, color, bg, border, photo, photoExpired, lat, lng, onPhotoPress, cvw, vh, isTablet }) {
   return (
-    <View style={{
-      flex: 1,
-      backgroundColor: bg, borderWidth: 1, borderColor: border,
-      borderRadius: 16, padding: isTablet ? cvw * 2 : cvw * 4,
-    }}>
-      {/* Label + icon */}
+    <View style={{ flex: 1, backgroundColor: bg, borderWidth: 1, borderColor: border, borderRadius: 16, padding: isTablet ? cvw * 2 : cvw * 4 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: vh * 1 }}>
         <Ionicons name={icon} size={isTablet ? cvw * 2 : cvw * 4} color={color} />
         <Text style={{ color, fontWeight: "700", fontSize: isTablet ? cvw * 2 : cvw * 3.2, letterSpacing: 1, textTransform: "uppercase" }}>
@@ -613,17 +640,14 @@ function TimeBlock({ label, time, icon, color, bg, border, photo, lat, lng, onPh
         </Text>
       </View>
 
-      {/* Time */}
       <Text style={{
         color: time === "--" ? C.muted : C.white,
         fontSize: isTablet ? cvw * 4 : cvw * 7,
-        fontWeight: "800", letterSpacing: -1,
-        marginBottom: vh * 1,
+        fontWeight: "800", letterSpacing: -1, marginBottom: vh * 1,
       }}>
         {time}
       </Text>
 
-      {/* Location */}
       {lat && lng ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: vh * 1 }}>
           <Ionicons name="location-outline" size={isTablet ? cvw * 1.8 : cvw * 3} color={C.muted} />
@@ -638,22 +662,35 @@ function TimeBlock({ label, time, icon, color, bg, border, photo, lat, lng, onPh
         </View>
       )}
 
-      {/* Photo button */}
+      {/* ✅ Photo button — shows "Expired" state if > 15 days, otherwise normal */}
       {photo ? (
-        <TouchableOpacity
-          onPress={onPhotoPress}
-          activeOpacity={0.8}
-          style={{
+        photoExpired ? (
+          <View style={{
             flexDirection: "row", alignItems: "center", gap: 6,
-            backgroundColor: "rgba(0,0,0,0.3)",
-            borderWidth: 1, borderColor: border,
+            backgroundColor: C.redBg,
+            borderWidth: 1, borderColor: C.redBorder,
             borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7,
             alignSelf: "flex-start",
-          }}
-        >
-          <Ionicons name="camera-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={color} />
-          <Text style={{ color, fontWeight: "600", fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>View Photo</Text>
-        </TouchableOpacity>
+          }}>
+            <Ionicons name="trash-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.red} />
+            <Text style={{ color: C.red, fontWeight: "600", fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>Photo Deleted</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            onPress={onPhotoPress}
+            activeOpacity={0.8}
+            style={{
+              flexDirection: "row", alignItems: "center", gap: 6,
+              backgroundColor: "rgba(0,0,0,0.3)",
+              borderWidth: 1, borderColor: border,
+              borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7,
+              alignSelf: "flex-start",
+            }}
+          >
+            <Ionicons name="camera-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={color} />
+            <Text style={{ color, fontWeight: "600", fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>View Photo</Text>
+          </TouchableOpacity>
+        )
       ) : (
         <View style={{
           flexDirection: "row", alignItems: "center", gap: 6,
@@ -670,10 +707,11 @@ function TimeBlock({ label, time, icon, color, bg, border, photo, lat, lng, onPh
   );
 }
 
-// ─── Record Row (list item) ───────────────────────────────────────────────────
+// ─── Record Row ───────────────────────────────────────────────────────────────
 function RecordRow({ record, isSelected, onPress, onPhotoPress, cvw, vh, isTablet }) {
   const meta = getStatusMeta(record);
   const duration = calcDuration(record.checkInTime, record.checkOutTime);
+  const photoExpired = isPhotoExpired(record.attendanceDate);
 
   return (
     <TouchableOpacity
@@ -681,14 +719,11 @@ function RecordRow({ record, isSelected, onPress, onPhotoPress, cvw, vh, isTable
       activeOpacity={0.8}
       style={{
         backgroundColor: isSelected ? C.surface : C.card,
-        borderRadius: 16,
-        borderWidth: 1,
+        borderRadius: 16, borderWidth: 1,
         borderColor: isSelected ? C.borderGold : C.border,
         padding: isTablet ? cvw * 2 : cvw * 4,
         marginBottom: vh * 1.2,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: cvw * 3,
+        flexDirection: "row", alignItems: "center", gap: cvw * 3,
       }}
     >
       {/* Date circle */}
@@ -696,10 +731,8 @@ function RecordRow({ record, isSelected, onPress, onPhotoPress, cvw, vh, isTable
         width: isTablet ? cvw * 7 : cvw * 13,
         height: isTablet ? cvw * 7 : cvw * 13,
         borderRadius: cvw * 7,
-        backgroundColor: meta.bg,
-        borderWidth: 1, borderColor: meta.border,
-        alignItems: "center", justifyContent: "center",
-        flexShrink: 0,
+        backgroundColor: meta.bg, borderWidth: 1, borderColor: meta.border,
+        alignItems: "center", justifyContent: "center", flexShrink: 0,
       }}>
         <Text style={{ color: meta.color, fontWeight: "800", fontSize: isTablet ? cvw * 2.2 : cvw * 4 }}>
           {record.attendanceDate?.split("-")[2]}
@@ -709,7 +742,7 @@ function RecordRow({ record, isSelected, onPress, onPhotoPress, cvw, vh, isTable
         </Text>
       </View>
 
-      {/* Middle info */}
+      {/* Middle */}
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
           <View style={{
@@ -726,6 +759,17 @@ function RecordRow({ record, isSelected, onPress, onPhotoPress, cvw, vh, isTable
               borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2,
             }}>
               <Text style={{ color: C.blue, fontWeight: "700", fontSize: isTablet ? cvw * 1.6 : cvw * 2.6 }}>HALF</Text>
+            </View>
+          )}
+          {/* ✅ Show a small "Photo deleted" pill on rows older than 15 days */}
+          {photoExpired && (record.checkInPhoto || record.checkOutPhoto) && (
+            <View style={{
+              backgroundColor: C.redBg, borderWidth: 1, borderColor: C.redBorder,
+              borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2,
+              flexDirection: "row", alignItems: "center", gap: 3,
+            }}>
+              <Ionicons name="trash-outline" size={10} color={C.red} />
+              <Text style={{ color: C.red, fontWeight: "600", fontSize: isTablet ? cvw * 1.4 : cvw * 2.4 }}>Photos deleted</Text>
             </View>
           )}
         </View>
@@ -749,44 +793,51 @@ function RecordRow({ record, isSelected, onPress, onPhotoPress, cvw, vh, isTable
 
       {/* Right: duration + photo icons */}
       <View style={{ alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
-        <Text style={{ color: C.gold, fontWeight: "800", fontSize: isTablet ? cvw * 2.2 : cvw * 3.8 }}>
-          {duration}
-        </Text>
+        <Text style={{ color: C.gold, fontWeight: "800", fontSize: isTablet ? cvw * 2.2 : cvw * 3.8 }}>{duration}</Text>
         <View style={{ flexDirection: "row", gap: 6 }}>
+          {/* ✅ Photo icons: show trash icon if expired, camera icon if not */}
           {record.checkInPhoto && (
             <TouchableOpacity
-              onPress={(e) => { e.stopPropagation(); onPhotoPress(record.checkInPhoto, "Check In Photo"); }}
+              onPress={(e) => { e.stopPropagation(); onPhotoPress(record.checkInPhoto, "Check In Photo", record.attendanceDate); }}
               style={{
                 width: isTablet ? cvw * 3.5 : cvw * 7,
                 height: isTablet ? cvw * 3.5 : cvw * 7,
                 borderRadius: 8,
-                backgroundColor: C.greenBg, borderWidth: 1, borderColor: C.greenBorder,
+                backgroundColor: photoExpired ? C.redBg : C.greenBg,
+                borderWidth: 1,
+                borderColor: photoExpired ? C.redBorder : C.greenBorder,
                 alignItems: "center", justifyContent: "center",
               }}
             >
-              <Ionicons name="image-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.green} />
+              <Ionicons
+                name={photoExpired ? "trash-outline" : "image-outline"}
+                size={isTablet ? cvw * 1.8 : cvw * 3.5}
+                color={photoExpired ? C.red : C.green}
+              />
             </TouchableOpacity>
           )}
           {record.checkOutPhoto && (
             <TouchableOpacity
-              onPress={(e) => { e.stopPropagation(); onPhotoPress(record.checkOutPhoto, "Check Out Photo"); }}
+              onPress={(e) => { e.stopPropagation(); onPhotoPress(record.checkOutPhoto, "Check Out Photo", record.attendanceDate); }}
               style={{
                 width: isTablet ? cvw * 3.5 : cvw * 7,
                 height: isTablet ? cvw * 3.5 : cvw * 7,
                 borderRadius: 8,
-                backgroundColor: C.redBg, borderWidth: 1, borderColor: C.redBorder,
+                backgroundColor: photoExpired ? C.redBg : C.redBg,
+                borderWidth: 1,
+                borderColor: photoExpired ? C.redBorder : C.redBorder,
                 alignItems: "center", justifyContent: "center",
               }}
             >
-              <Ionicons name="image-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.red} />
+              <Ionicons
+                name={photoExpired ? "trash-outline" : "image-outline"}
+                size={isTablet ? cvw * 1.8 : cvw * 3.5}
+                color={C.red}
+              />
             </TouchableOpacity>
           )}
         </View>
-        <Ionicons
-          name={isSelected ? "chevron-up" : "chevron-down"}
-          size={isTablet ? cvw * 2 : cvw * 3.5}
-          color={C.muted}
-        />
+        <Ionicons name={isSelected ? "chevron-up" : "chevron-down"} size={isTablet ? cvw * 2 : cvw * 3.5} color={C.muted} />
       </View>
     </TouchableOpacity>
   );
@@ -795,15 +846,9 @@ function RecordRow({ record, isSelected, onPress, onPhotoPress, cvw, vh, isTable
 // ─── Section label ────────────────────────────────────────────────────────────
 function SectionLabel({ title, icon, cvw, isTablet }) {
   return (
-    <View style={{
-      flexDirection: "row", alignItems: "center", gap: 8,
-      marginBottom: isTablet ? cvw * 1.5 : cvw * 3,
-    }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: isTablet ? cvw * 1.5 : cvw * 3 }}>
       <Ionicons name={icon} size={isTablet ? cvw * 2.2 : cvw * 4} color={C.gold} />
-      <Text style={{
-        color: C.white, fontSize: isTablet ? cvw * 2.4 : cvw * 4,
-        fontWeight: "800", letterSpacing: 0.2,
-      }}>
+      <Text style={{ color: C.white, fontSize: isTablet ? cvw * 2.4 : cvw * 4, fontWeight: "800", letterSpacing: 0.2 }}>
         {title}
       </Text>
       <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />

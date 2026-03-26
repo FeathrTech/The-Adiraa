@@ -22,7 +22,7 @@ type StaffAttendanceDto = {
   attendanceId: string | null;
   name: string;
   roles: Role[];
-  status: 'Present' | 'Late' | 'Absent';
+  status: 'Present' | 'Late' | 'Absent' | 'NotMarked';
 };
 
 @Injectable()
@@ -40,24 +40,20 @@ export class AttendanceService {
 
     private realtimeGateway: RealtimeGateway,
   ) { }
+
   // ============================
   // IST DAY BOUNDARIES
   // ============================
 
   private getISTDayBounds(date?: string) {
-
     const now = date ? new Date(date) : new Date();
-
     const ist = new Date(
       now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
     );
-
     const start = new Date(ist);
     start.setHours(0, 0, 0, 0);
-
     const end = new Date(ist);
     end.setHours(23, 59, 59, 999);
-
     return { start, end };
   }
 
@@ -73,7 +69,9 @@ export class AttendanceService {
       where: {
         user: { id: user.id },
         tenant: { id: user.tenant.id },
-        createdAt: Between(start, end),
+        attendanceDate: new Date().toLocaleDateString("en-CA", {
+          timeZone: "Asia/Kolkata",
+        }),
       },
       relations: ['location'],
     });
@@ -86,18 +84,12 @@ export class AttendanceService {
     }
 
     const now = new Date();
-
     let workingMinutes = 0;
 
     if (attendance.checkInTime) {
-
-      const endTime =
-        attendance.checkOutTime ?? now;
-
+      const endTime = attendance.checkOutTime ?? now;
       workingMinutes =
-        (endTime.getTime() -
-          attendance.checkInTime.getTime()) /
-        (1000 * 60);
+        (endTime.getTime() - attendance.checkInTime.getTime()) / (1000 * 60);
     }
 
     return {
@@ -120,37 +112,40 @@ export class AttendanceService {
     user: User,
   ) {
 
-    const { start, end } =
-      this.getISTDayBounds(date);
-
     const tenantId = user.tenant.id;
 
-    const attendances =
-      await this.attendanceRepo.find({
-        where: {
-          tenant: { id: tenantId },
-          createdAt: Between(start, end),
-        },
-        relations: ['user', 'user.roles'],
-      });
+    const attendances = await this.attendanceRepo.find({
+      where: {
+        tenant: { id: tenantId },
+        attendanceDate: date,
+      },
+      relations: ['user', 'user.roles'],
+    });
 
-    const allStaff =
-      await this.userRepo.find({
-        where: {
-          tenant: { id: tenantId },
-        },
-        relations: ['roles'],
-      });
+    const allStaff = await this.userRepo.find({
+      where: { tenant: { id: tenantId } },
+      relations: ['roles'],
+    });
 
-    const presentIds =
-      attendances.map((a) => a.user.id);
+    // ── exclude staff created after the selected date ──
+    const selectedDay = new Date(date);
+    selectedDay.setHours(23, 59, 59, 999);
+    const eligibleStaff = allStaff.filter(
+      (u) => new Date(u.createdAt) <= selectedDay,
+    );
+
+    // ── today = NotMarked, past = Absent ──
+    const todayIST = new Date().toLocaleDateString('en-CA', {
+      timeZone: 'Asia/Kolkata',
+    });
+    const isToday = date === todayIST;
+    const noRecordStatus: 'NotMarked' | 'Absent' = isToday ? 'NotMarked' : 'Absent';
 
     let staff: StaffAttendanceDto[] = [];
 
     if (filter === 'present') {
-
       staff = attendances
-        .filter((a) => a.checkInTime)
+        .filter((a) => a.checkInTime && !a.isAbsent)
         .map((a) => ({
           id: a.user.id,
           attendanceId: a.id,
@@ -161,7 +156,6 @@ export class AttendanceService {
     }
 
     else if (filter === 'late') {
-
       staff = attendances
         .filter((a) => a.isLate)
         .map((a) => ({
@@ -174,34 +168,41 @@ export class AttendanceService {
     }
 
     else if (filter === 'absent') {
+      staff = attendances
+        .filter((a) => a.isAbsent)
+        .map((a) => ({
+          id: a.user.id,
+          attendanceId: a.id,
+          name: a.user.name,
+          roles: a.user.roles,
+          status: 'Absent',
+        }));
+    }
 
-      staff = allStaff
-        .filter((u) => !presentIds.includes(u.id))
+    else if (filter === 'not_marked') {
+      const staffWithRecord = attendances.map((a) => a.user.id);
+      staff = eligibleStaff
+        .filter((u) => !staffWithRecord.includes(u.id))
         .map((u) => ({
           id: u.id,
           attendanceId: null,
           name: u.name,
           roles: u.roles,
-          status: 'Absent',
+          status: 'NotMarked',
         }));
     }
 
     else {
+      // 'all'
+      staff = eligibleStaff.map((u) => {
+        const attendance = attendances.find((a) => a.user.id === u.id);
 
-      staff = allStaff.map((u) => {
+        let status: 'Present' | 'Late' | 'Absent' | 'NotMarked' = noRecordStatus;
 
-        const attendance =
-          attendances.find(
-            (a) => a.user.id === u.id,
-          );
-
-        let status: 'Present' | 'Late' | 'Absent' =
-          'Absent';
-
-        if (attendance?.checkInTime) {
-          status = attendance.isLate
-            ? 'Late'
-            : 'Present';
+        if (attendance?.isAbsent) {
+          status = 'Absent';
+        } else if (attendance?.checkInTime) {
+          status = attendance.isLate ? 'Late' : 'Present';
         }
 
         return {
@@ -214,8 +215,9 @@ export class AttendanceService {
       });
     }
 
+    console.log(`[getDashboard] filter=${filter} staff.length=${staff.length} eligibleStaff.length=${eligibleStaff.length}`);
     return {
-      total: allStaff.length,
+      total: staff.length,
       staff,
     };
   }
@@ -248,15 +250,22 @@ export class AttendanceService {
       throw new BadRequestException("Attendance already recorded today");
     }
 
-    const location = user.location;
+    // ── Load user with all assigned locations ──
+    const userWithLocations = await this.userRepo.findOne({
+      where: { id: user.id },
+      relations: ['locations', 'roles', 'tenant'],
+    });
 
-    if (!location)
-      throw new ForbiddenException(
-        'No assigned location',
-      );
+    if (!userWithLocations)
+      throw new ForbiddenException('User not found');
 
-    const role = user.roles?.[0];
+    const assignedLocations = userWithLocations.locations ?? [];
 
+    if (assignedLocations.length === 0)
+      throw new ForbiddenException('No assigned location');
+
+    // ── Load role config ──
+    const role = userWithLocations.roles?.[0];
     let config: AttendanceConfig | null = null;
 
     if (role) {
@@ -270,53 +279,36 @@ export class AttendanceService {
 
     const allowOutsideRadius = config?.allowOutsideRadius ?? false;
     const lateThreshold = config?.lateThreshold ?? 10;
+    const tolerance = 15;
 
-    const distance = this.calculateDistance(
-      lat,
-      lng,
-      location.latitude,
-      location.longitude,
-    );
+    // ── Find which assigned location the staff is within radius of ──
+    const matchedLocation = assignedLocations.find((loc) => {
+      if (loc.latitude == null || loc.longitude == null) return false;
+      const distance = this.calculateDistance(lat, lng, loc.latitude, loc.longitude);
+      return distance <= (loc.allowedRadius ?? 0) + tolerance;
+    });
 
-    const tolerance = 15; // meters GPS drift
+    if (!matchedLocation && !allowOutsideRadius)
+      throw new ForbiddenException('Outside allowed radius for all assigned locations');
 
-    if (
-      !allowOutsideRadius &&
-      location.allowedRadius != null &&
-      distance > location.allowedRadius + tolerance
-    ) {
-      throw new ForbiddenException(
-        'Outside allowed radius',
-      );
-    }
+    // Use matched location, or fall back to first assigned if allowOutsideRadius
+    const location = matchedLocation ?? assignedLocations[0];
 
+    // ── Late check ──
     const now = new Date();
     let isLate = false;
 
     if (user.shiftStartTime) {
-
       const todayDate = now.toLocaleDateString('en-CA', {
         timeZone: 'Asia/Kolkata',
       });
+      const shiftStart = new Date(`${todayDate}T${user.shiftStartTime}:00`);
+      const lateTime = new Date(shiftStart.getTime() + lateThreshold * 60000);
 
-      const shiftStart = new Date(
-        `${todayDate}T${user.shiftStartTime}:00`,
-      );
-
-      const graceMinutes = lateThreshold;
-
-      const lateTime = new Date(
-        shiftStart.getTime() +
-        graceMinutes * 60000,
-      );
       if (now > lateTime) {
-
         if (!config?.allowLateCheckIn) {
-          throw new ForbiddenException(
-            'Check-in not allowed after late threshold'
-          );
+          throw new ForbiddenException('Check-in not allowed after late threshold');
         }
-
         isLate = true;
       }
     }
@@ -326,10 +318,6 @@ export class AttendanceService {
       'attendance/checkin',
       file.mimetype,
     );
-
-    // const today = now.toLocaleDateString('en-CA', {
-    //   timeZone: 'Asia/Kolkata',
-    // });
 
     const attendance = this.attendanceRepo.create({
       user,
@@ -344,9 +332,7 @@ export class AttendanceService {
     });
 
     const saved = await this.attendanceRepo.save(attendance);
-
     await this.emitLiveAttendanceCount(user.tenant.id);
-
     return saved;
   }
 
@@ -374,14 +360,10 @@ export class AttendanceService {
     });
 
     if (!attendance?.checkInTime)
-      throw new BadRequestException(
-        'Check-in not found',
-      );
+      throw new BadRequestException('Check-in not found');
 
     if (attendance.checkOutTime)
-      throw new BadRequestException(
-        'Already checked out',
-      );
+      throw new BadRequestException('Already checked out');
 
     const photoUrl = await uploadToR2(
       file.buffer,
@@ -395,21 +377,15 @@ export class AttendanceService {
     attendance.checkOutPhoto = photoUrl;
 
     const saved = await this.attendanceRepo.save(attendance);
-
     await this.emitLiveAttendanceCount(user.tenant.id);
-
     return saved;
   }
 
   // =====================================================
-  // ADMIN ACTION HANDLER (for dropdown actions)
+  // ADMIN ACTION HANDLER
   // =====================================================
 
-  async handleAction(
-    id: string,
-    action: string,
-    user: User,
-  ) {
+  async handleAction(id: string, action: string, user: User) {
 
     const attendance = await this.attendanceRepo.findOne({
       where: {
@@ -445,21 +421,17 @@ export class AttendanceService {
       }
 
       case 'mark_present': {
-
         attendance.isAbsent = false;
         attendance.isLate = false;
         attendance.isHalfDay = false;
-
         if (!attendance.checkInTime) {
           attendance.checkInTime = new Date();
         }
-
         const saved = await this.attendanceRepo.save(attendance);
-
         await this.emitLiveAttendanceCount(user.tenant.id);
-
         return saved;
       }
+
       case 'mark_absent': {
         attendance.isAbsent = true;
         const saved = await this.attendanceRepo.save(attendance);
@@ -480,7 +452,7 @@ export class AttendanceService {
 
     const staff = await this.userRepo.findOne({
       where: { id: body.userId },
-      relations: ['tenant', 'location'],
+      relations: ['tenant', 'locations'],
     });
 
     if (!staff)
@@ -498,9 +470,7 @@ export class AttendanceService {
       attendance = this.attendanceRepo.create({
         user: { id: staff.id },
         tenant: { id: admin.tenant.id },
-        location: staff.location
-          ? { id: staff.location.id }
-          : undefined,
+        location: staff.locations?.[0] ? { id: staff.locations[0].id } : undefined,
         attendanceDate: body.date,
       });
     }
@@ -514,9 +484,7 @@ export class AttendanceService {
       : null;
 
     const saved = await this.attendanceRepo.save(attendance);
-
     await this.emitLiveAttendanceCount(admin.tenant.id);
-
     return saved;
   }
 
@@ -528,7 +496,7 @@ export class AttendanceService {
 
     const staff = await this.userRepo.findOne({
       where: { id: body.userId },
-      relations: ['tenant', 'location'],
+      relations: ['tenant', 'locations'],
     });
 
     if (!staff)
@@ -537,17 +505,20 @@ export class AttendanceService {
     const attendance = this.attendanceRepo.create({
       user: { id: staff.id },
       tenant: { id: admin.tenant.id },
-      location: staff.location ? { id: staff.location.id } : undefined,
+      location: staff.locations?.[0] ? { id: staff.locations[0].id } : undefined,
       attendanceDate: body.date,
       isAbsent: true,
     });
 
     const saved = await this.attendanceRepo.save(attendance);
-
     await this.emitLiveAttendanceCount(admin.tenant.id);
-
     return saved;
   }
+
+  // =====================================================
+  // EMIT LIVE COUNT
+  // =====================================================
+
   private async emitLiveAttendanceCount(tenantId: string) {
 
     const { start, end } = this.getISTDayBounds();
@@ -555,55 +526,39 @@ export class AttendanceService {
     const count = await this.attendanceRepo.count({
       where: {
         tenant: { id: tenantId },
-        createdAt: Between(start, end),
+        attendanceDate: new Date().toLocaleDateString("en-CA", {
+          timeZone: "Asia/Kolkata",
+        }),
         checkInTime: Not(IsNull()),
         checkOutTime: IsNull(),
       },
     });
 
-    this.realtimeGateway.server.emit("attendance_live_update", {
-      count,
-    });
+    this.realtimeGateway.server.emit("attendance_live_update", { count });
   }
 
   // ============================
   // DISTANCE CALCULATION
   // ============================
 
-  private calculateDistance(
-    lat1,
-    lon1,
-    lat2,
-    lon2,
-  ) {
-
+  private calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371e3;
-
     const φ1 = (lat1 * Math.PI) / 180;
     const φ2 = (lat2 * Math.PI) / 180;
-
-    const Δφ =
-      ((lat2 - lat1) * Math.PI) / 180;
-
-    const Δλ =
-      ((lon2 - lon1) * Math.PI) / 180;
-
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
     const a =
-      Math.sin(Δφ / 2) *
-      Math.sin(Δφ / 2) +
-      Math.cos(φ1) *
-      Math.cos(φ2) *
-      Math.sin(Δλ / 2) *
-      Math.sin(Δλ / 2);
-
-    return (
-      R *
-      2 *
-      Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    );
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) *
+      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
-  async getAttendanceById(id: string, user: User) {
 
+  // ============================
+  // GET ATTENDANCE BY ID
+  // ============================
+
+  async getAttendanceById(id: string, user: User) {
     const attendance = await this.attendanceRepo.findOne({
       where: {
         id,
@@ -619,12 +574,33 @@ export class AttendanceService {
     return attendance;
   }
 
-  async getUserAttendanceAnalytics(userId: string, admin: User) {
+  // ============================
+  // USER ANALYTICS
+  // ============================
+
+  async getUserAttendanceAnalytics(userId: string, admin: User, month?: string) {
 
     const now = new Date();
 
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    let year: number;
+    let mon: number;
+
+    if (month) {
+      const [y, m] = month.split('-').map(Number);
+      year = y;
+      mon = m - 1;
+    } else {
+      year = now.getFullYear();
+      mon = now.getMonth();
+    }
+
+    const startOfMonth = new Date(year, mon, 1);
+    const endOfMonth = new Date(year, mon + 1, 0);
+
+    const targetUser = await this.userRepo.findOne({ where: { id: userId } });
+
+    const userCreatedAt = targetUser?.createdAt ? new Date(targetUser.createdAt) : startOfMonth;
+    const userJoinDateStr = userCreatedAt.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 
     const records = await this.attendanceRepo.find({
       where: {
@@ -635,7 +611,7 @@ export class AttendanceService {
           endOfMonth.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
         ),
       },
-      relations: ['user'],  // ← added to access shiftEndTime
+      relations: ['user'],
     });
 
     let daysWorked = 0;
@@ -648,85 +624,87 @@ export class AttendanceService {
       status: string;
       checkInTime: Date | null;
       checkOutTime: Date | null;
-      checkInPhoto: string;
-      checkOutPhoto: string;
+      checkInPhoto: string | null;
+      checkOutPhoto: string | null;
       lat: number | null;
       lng: number | null;
     }[] = [];
 
-    for (const r of records) {
+    const todayIST = now.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 
-      let status = "Absent";
+    let d = new Date(startOfMonth);
+    while (d <= endOfMonth) {
+      const dateStr = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 
-      if (r.isAbsent) {
-        status = "Absent";
-        absents++;
+      if (dateStr > todayIST) {
+        d.setDate(d.getDate() + 1);
+        continue;
       }
 
-      else if (r.checkInTime) {
+      if (dateStr < userJoinDateStr) {
+        d.setDate(d.getDate() + 1);
+        continue;
+      }
 
+      const r = records.find(rec => rec.attendanceDate === dateStr);
+
+      let status: string;
+
+      if (r?.isAbsent) {
+        status = "Absent";
+        absents++;
+      } else if (r?.checkInTime) {
         status = r.isLate ? "Late" : "Present";
         daysWorked++;
-
         if (r.isLate) lateDays++;
-
-        // ← overtime: day counts only if checkout is after shift end
-        if (r.checkOutTime && r.user?.shiftEndTime) {
-          const shiftEnd = new Date(
-            `${r.attendanceDate}T${r.user.shiftEndTime}:00`
-          );
-          if (r.checkOutTime.getTime() > shiftEnd.getTime()) {
-            overtime++;
-          }
+      } else {
+        if (dateStr === todayIST) {
+          status = "NotMarked";
+        } else {
+          status = "Absent";
+          absents++;
         }
       }
 
       calendar.push({
-        date: r.attendanceDate,
+        date: dateStr,
         status,
-        checkInTime: r.checkInTime,
-        checkOutTime: r.checkOutTime,
-        checkInPhoto: r.checkInPhoto,
-        checkOutPhoto: r.checkOutPhoto,
-        lat: r.checkInLat,
-        lng: r.checkInLng,
+        checkInTime: r?.checkInTime ?? null,
+        checkOutTime: r?.checkOutTime ?? null,
+        checkInPhoto: r?.checkInPhoto ?? null,
+        checkOutPhoto: r?.checkOutPhoto ?? null,
+        lat: r?.checkInLat ?? null,
+        lng: r?.checkInLng ?? null,
       });
+
+      d.setDate(d.getDate() + 1);
     }
 
-    const todayDate = now.toLocaleDateString('en-CA', {
-      timeZone: 'Asia/Kolkata',
-    });
-
-    const today = records.find(
-      (r) => r.attendanceDate === todayDate,
-    );
+    const todayRecord = records.find((r) => r.attendanceDate === todayIST);
 
     const status =
-      today?.isAbsent
+      todayRecord?.isAbsent
         ? "Absent"
-        : today?.checkOutTime
+        : todayRecord?.checkOutTime
           ? "Completed"
-          : today?.checkInTime
-            ? (today.isLate ? "Late" : "Present")
-            : "Absent";
+          : todayRecord?.checkInTime
+            ? (todayRecord.isLate ? "Late" : "Present")
+            : "NotMarked";
 
     return {
-      summary: {
-        daysWorked,
-        lateDays,
-        overtime,
-        absents,
-        status,
-      },
+      summary: { daysWorked, lateDays, overtime, absents, status },
       calendar,
     };
   }
-  async getMyHistory(month: string, user: User) {
-    // month = "2026-03"
-    const [year, mon] = month.split('-').map(Number);
 
+  // ============================
+  // MY HISTORY
+  // ============================
+
+  async getMyHistory(month: string, user: User) {
+    const [year, mon] = month.split('-').map(Number);
     const startDate = `${year}-${String(mon).padStart(2, '0')}-01`;
-    const lastDay = new Date(year, mon, 0).getDate();          // last day of month
+    const lastDay = new Date(year, mon, 0).getDate();
     const endDate = `${year}-${String(mon).padStart(2, '0')}-${lastDay}`;
 
     const records = await this.attendanceRepo.find({

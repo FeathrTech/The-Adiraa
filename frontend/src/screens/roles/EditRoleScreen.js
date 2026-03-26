@@ -8,12 +8,13 @@ import {
     Alert,
     useWindowDimensions,
     StatusBar,
+    TextInput,
 } from "react-native";
 import { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { fetchPermissions } from "../../api/permissionApi";
-import { assignPermissions, fetchRoleById } from "../../api/roleApi";
+import { updateRole, fetchRoleById } from "../../api/roleApi";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useUIStore } from "../../store/uiStore";
 import { PERMISSION_GROUPS } from "../../config/permissionMap";
@@ -31,6 +32,7 @@ const C = {
     white: "#FFFFFF",
     muted: "#777",
     faint: "#333",
+    inputBg: "#1C1C1C",
 };
 
 // ─── Responsive hook ──────────────────────────────────────────────────────────
@@ -50,16 +52,17 @@ const switchProps = (value) => ({
     ios_backgroundColor: C.faint,
 });
 
-// ─── Screen Header (outside main component to prevent remount) ────────────────
+// ─── Screen Header ────────────────────────────────────────────────────────────
 function ScreenHeader({ navigation, roleName, selectedCount, totalCount, isTablet, vw, vh, cvw }) {
     return (
         <View style={{
             flexDirection: "row", alignItems: "center",
             paddingHorizontal: isTablet ? vw * 3 : vw * 5,
-            paddingTop: isTablet ? vh * 2 : vh * 2,
+            paddingTop: vh * 2,
             paddingBottom: isTablet ? vh * 1.5 : vh * 1.8,
             borderBottomWidth: 1, borderBottomColor: C.border,
         }}>
+            {/* Back button */}
             <TouchableOpacity
                 onPress={() => navigation.goBack()}
                 style={{
@@ -68,6 +71,7 @@ function ScreenHeader({ navigation, roleName, selectedCount, totalCount, isTable
                     paddingHorizontal: 12, paddingVertical: 7,
                     borderRadius: 10, borderWidth: 1, borderColor: C.borderGold,
                     marginRight: 14,
+                    flexShrink: 0,
                 }}
             >
                 <Ionicons name="arrow-back" size={isTablet ? cvw * 2.2 : 18} color={C.gold} />
@@ -76,21 +80,27 @@ function ScreenHeader({ navigation, roleName, selectedCount, totalCount, isTable
                 )}
             </TouchableOpacity>
 
-            <View style={{ flex: 1 }}>
+            {/* Title */}
+            <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
                 <Text style={{
                     color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8,
                     letterSpacing: 3, fontWeight: "700", textTransform: "uppercase", marginBottom: 2,
                 }}>
                     Role Management
                 </Text>
-                <Text style={{
-                    color: C.white, fontSize: isTablet ? cvw * 3.5 : cvw * 5.5,
-                    fontWeight: "800", letterSpacing: -0.3,
-                }} numberOfLines={1}>
-                    {roleName}
+                <Text
+                    style={{
+                        color: C.white, fontSize: isTablet ? cvw * 3.5 : cvw * 5.5,
+                        fontWeight: "800", letterSpacing: -0.3,
+                    }}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                >
+                    {roleName || "Edit Role"}
                 </Text>
             </View>
 
+            {/* Permission counter badge */}
             <View style={{
                 backgroundColor: selectedCount > 0 ? "rgba(201,162,39,0.15)" : C.faint,
                 borderWidth: 1, borderColor: selectedCount > 0 ? C.borderGold : C.border,
@@ -98,6 +108,7 @@ function ScreenHeader({ navigation, roleName, selectedCount, totalCount, isTable
                 paddingHorizontal: isTablet ? cvw * 2 : cvw * 3.5,
                 paddingVertical: isTablet ? vh * 0.6 : vh * 0.7,
                 alignItems: "center",
+                flexShrink: 0,
             }}>
                 <Text style={{
                     color: selectedCount > 0 ? C.gold : C.muted,
@@ -118,11 +129,20 @@ function ScreenHeader({ navigation, roleName, selectedCount, totalCount, isTable
     );
 }
 
-// ─── Form Content (outside main component to prevent remount) ─────────────────
+// ─── Form Content ─────────────────────────────────────────────────────────────
 function FormContent({
-    permissions, selectedPermissions, roleName,
-    toggleAll, toggleGroup, togglePermission, handleSave,
-    isTablet, vw, vh, cvw,
+    permissions,
+    selectedPermissions,
+    roleNameInput,
+    setRoleNameInput,
+    toggleAll,
+    toggleGroup,
+    togglePermission,
+    handleSave,
+    isTablet,
+    vw,
+    vh,
+    cvw,
 }) {
     const allSelected = selectedPermissions.length === permissions.length;
     const canSave = selectedPermissions.length > 0;
@@ -135,13 +155,74 @@ function FormContent({
     return (
         <ScrollView
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={{
                 paddingHorizontal: isTablet ? vw * 3 : vw * 5,
                 paddingTop: isTablet ? vh * 2 : vh * 2,
                 paddingBottom: 100,
             }}
         >
-            {/* ── SELECT ALL ROW ── */}
+            {/* ── ROLE NAME INPUT ── */}
+            <View style={{
+                backgroundColor: C.card,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: C.borderGold,
+                paddingHorizontal: isTablet ? cvw * 3 : cvw * 5,
+                paddingVertical: isTablet ? vh * 1.6 : vh * 1.8,
+                marginBottom: isTablet ? cvw * 2 : cvw * 4,
+            }}>
+                {/* Label row */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <View style={{
+                        width: isTablet ? cvw * 4 : cvw * 7,
+                        height: isTablet ? cvw * 4 : cvw * 7,
+                        borderRadius: cvw * 4,
+                        backgroundColor: "rgba(201,162,39,0.12)",
+                        borderWidth: 1, borderColor: C.borderGold,
+                        alignItems: "center", justifyContent: "center",
+                    }}>
+                        <Ionicons
+                            name="create-outline"
+                            size={isTablet ? cvw * 2 : cvw * 3.5}
+                            color={C.gold}
+                        />
+                    </View>
+                    <Text style={{
+                        color: C.white,
+                        fontWeight: "700",
+                        fontSize: isTablet ? cvw * 2.4 : cvw * 3.8,
+                    }}>
+                        Role Name
+                    </Text>
+                    <Text style={{
+                        color: C.red,
+                        fontWeight: "800",
+                        fontSize: isTablet ? cvw * 2 : cvw * 3.8,
+                        marginLeft: -4,
+                    }}>*</Text>
+                </View>
+
+                {/* Input */}
+                <TextInput
+                    value={roleNameInput}
+                    onChangeText={setRoleNameInput}
+                    placeholder="e.g. Manager, Supervisor…"
+                    placeholderTextColor={C.muted}
+                    style={{
+                        backgroundColor: C.inputBg,
+                        borderWidth: 1,
+                        borderColor: roleNameInput.trim() ? C.borderGold : C.border,
+                        borderRadius: 12,
+                        paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 4,
+                        paddingVertical: isTablet ? cvw * 1.2 : cvw * 3,
+                        color: C.white,
+                        fontSize: isTablet ? cvw * 2.2 : cvw * 3.8,
+                    }}
+                />
+            </View>
+
+            {/* ── SELECT ALL PERMISSIONS ── */}
             <View style={{
                 backgroundColor: C.card,
                 borderRadius: 14,
@@ -154,7 +235,7 @@ function FormContent({
                 justifyContent: "space-between",
                 marginBottom: isTablet ? cvw * 2 : cvw * 5,
             }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: cvw * 3 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: cvw * 3, flex: 1, minWidth: 0 }}>
                     <View style={{
                         width: isTablet ? cvw * 5 : cvw * 9,
                         height: isTablet ? cvw * 5 : cvw * 9,
@@ -162,6 +243,7 @@ function FormContent({
                         backgroundColor: allSelected ? "rgba(201,162,39,0.15)" : C.faint,
                         borderWidth: 1, borderColor: allSelected ? C.borderGold : C.border,
                         alignItems: "center", justifyContent: "center",
+                        flexShrink: 0,
                     }}>
                         <Ionicons
                             name={allSelected ? "checkmark-done-outline" : "list-outline"}
@@ -169,7 +251,7 @@ function FormContent({
                             color={allSelected ? C.gold : C.muted}
                         />
                     </View>
-                    <View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
                         <Text style={{
                             color: C.white, fontWeight: "700",
                             fontSize: isTablet ? cvw * 2.6 : cvw * 3.5,
@@ -185,6 +267,7 @@ function FormContent({
                     value={allSelected}
                     onValueChange={toggleAll}
                     {...switchProps(allSelected)}
+                    style={{ flexShrink: 0, marginLeft: 12 }}
                 />
             </View>
 
@@ -207,12 +290,16 @@ function FormContent({
                             backgroundColor: C.card,
                             borderRadius: 14,
                             borderWidth: 1,
-                            borderColor: allGroupSelected ? C.borderGold : someSelected ? "rgba(201,162,39,0.2)" : C.border,
+                            borderColor: allGroupSelected
+                                ? C.borderGold
+                                : someSelected
+                                    ? "rgba(201,162,39,0.2)"
+                                    : C.border,
                             paddingHorizontal: isTablet ? cvw * 3 : cvw * 5,
                             paddingVertical: isTablet ? vh * 1.4 : vh * 1.6,
                             marginBottom: 2,
                         }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: cvw * 3, flex: 1 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: cvw * 3, flex: 1, minWidth: 0 }}>
                                 <View style={{
                                     width: isTablet ? cvw * 4.5 : cvw * 8,
                                     height: isTablet ? cvw * 4.5 : cvw * 8,
@@ -223,8 +310,13 @@ function FormContent({
                                             ? "rgba(201,162,39,0.08)"
                                             : C.faint,
                                     borderWidth: 1,
-                                    borderColor: allGroupSelected ? C.borderGold : someSelected ? "rgba(201,162,39,0.2)" : C.border,
+                                    borderColor: allGroupSelected
+                                        ? C.borderGold
+                                        : someSelected
+                                            ? "rgba(201,162,39,0.2)"
+                                            : C.border,
                                     alignItems: "center", justifyContent: "center",
+                                    flexShrink: 0,
                                 }}>
                                     <Ionicons
                                         name="shield-half-outline"
@@ -232,11 +324,11 @@ function FormContent({
                                         color={allGroupSelected ? C.gold : someSelected ? C.goldLight : C.muted}
                                     />
                                 </View>
-                                <View>
+                                <View style={{ flex: 1, minWidth: 0 }}>
                                     <Text style={{
                                         color: C.white, fontWeight: "700",
                                         fontSize: isTablet ? cvw * 2.6 : cvw * 3,
-                                    }}>
+                                    }} numberOfLines={1}>
                                         {groupName}
                                     </Text>
                                     <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3, marginTop: 2 }}>
@@ -248,6 +340,7 @@ function FormContent({
                                 value={allGroupSelected}
                                 onValueChange={() => toggleGroup(groupKeys)}
                                 {...switchProps(allGroupSelected)}
+                                style={{ flexShrink: 0, marginLeft: 12 }}
                             />
                         </View>
 
@@ -277,19 +370,20 @@ function FormContent({
                                             backgroundColor: isOn ? "rgba(201,162,39,0.04)" : "transparent",
                                         }}
                                     >
-                                        <View style={{ flexDirection: "row", alignItems: "center", gap: cvw * 3, flex: 1 }}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: cvw * 3, flex: 1, minWidth: 0 }}>
                                             <View style={{
                                                 width: isTablet ? cvw * 1.5 : cvw * 2.5,
                                                 height: isTablet ? cvw * 1.5 : cvw * 2.5,
                                                 borderRadius: cvw * 1.5,
                                                 backgroundColor: isOn ? C.gold : C.faint,
+                                                flexShrink: 0,
                                             }} />
                                             <Text style={{
                                                 color: isOn ? C.white : C.muted,
                                                 fontSize: isTablet ? cvw * 2.2 : cvw * 3.5,
                                                 fontWeight: isOn ? "600" : "400",
                                                 flex: 1,
-                                            }}>
+                                            }} numberOfLines={2}>
                                                 {formatLabel(perm.key)}
                                             </Text>
                                         </View>
@@ -297,6 +391,7 @@ function FormContent({
                                             value={isOn}
                                             onValueChange={() => togglePermission(perm.id)}
                                             {...switchProps(isOn)}
+                                            style={{ flexShrink: 0, marginLeft: 12 }}
                                         />
                                     </View>
                                 );
@@ -349,7 +444,7 @@ export default function EditRoleScreen() {
 
     const setGlobalLoading = useUIStore((s) => s.setLoading);
 
-    const [roleName, setRoleName] = useState("");
+    const [roleNameInput, setRoleNameInput] = useState("");
     const [permissions, setPermissions] = useState([]);
     const [selectedPermissions, setSelectedPermissions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -363,7 +458,7 @@ export default function EditRoleScreen() {
                 fetchRoleById(roleId),
             ]);
             setPermissions(allPermissions);
-            setRoleName(roleDetails.name);
+            setRoleNameInput(roleDetails.name);
             setSelectedPermissions((roleDetails.permissions || []).map((p) => p.id));
         } catch (error) {
             console.log("PERMISSION LOAD ERROR:", error.response?.data || error.message);
@@ -372,9 +467,6 @@ export default function EditRoleScreen() {
             setLoading(false);
         }
     };
-
-    const formatLabel = (key) =>
-        key.split(".").slice(1).join(" ").replace(/_/g, " ").toUpperCase();
 
     const togglePermission = (id) => {
         setSelectedPermissions((prev) =>
@@ -398,13 +490,20 @@ export default function EditRoleScreen() {
     };
 
     const handleSave = async () => {
+        if (!roleNameInput.trim()) {
+            Alert.alert("Error", "Role name is required");
+            return;
+        }
         if (!selectedPermissions.length) {
             Alert.alert("Warning", "Role must have at least one permission");
             return;
         }
         try {
             setGlobalLoading(true);
-            await assignPermissions(roleId, selectedPermissions);
+            await updateRole(roleId, {
+                name: roleNameInput.trim(),
+                permissionIds: selectedPermissions,
+            });
             Alert.alert("Success", "Role updated");
             navigation.goBack();
         } catch (error) {
@@ -426,14 +525,13 @@ export default function EditRoleScreen() {
 
     const selectedCount = selectedPermissions.length;
     const totalCount = permissions.length;
-
     const sharedProps = { isTablet, vw, vh, cvw };
 
     const innerContent = (
         <>
             <ScreenHeader
                 navigation={navigation}
-                roleName={roleName}
+                roleName={roleNameInput}
                 selectedCount={selectedCount}
                 totalCount={totalCount}
                 {...sharedProps}
@@ -441,6 +539,8 @@ export default function EditRoleScreen() {
             <FormContent
                 permissions={permissions}
                 selectedPermissions={selectedPermissions}
+                roleNameInput={roleNameInput}
+                setRoleNameInput={setRoleNameInput}
                 toggleAll={toggleAll}
                 toggleGroup={toggleGroup}
                 togglePermission={togglePermission}

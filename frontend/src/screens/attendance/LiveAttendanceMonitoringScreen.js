@@ -37,10 +37,12 @@ const C = {
 };
 
 // ─── Status badge colours ─────────────────────────────────────────────────────
+// ─── Status badge colours ─────────────────────────────────────────────────────
 const STATUS = {
   Present: { bg: "rgba(93,190,138,0.15)", text: "#5DBE8A", border: "rgba(93,190,138,0.35)" },
   Absent: { bg: "rgba(229,115,115,0.15)", text: "#E57373", border: "rgba(229,115,115,0.35)" },
   Late: { bg: "rgba(232,195,74,0.15)", text: "#E8C34A", border: "rgba(232,195,74,0.35)" },
+  NotMarked: { bg: "rgba(120,120,120,0.15)", text: "#999999", border: "rgba(120,120,120,0.35)" },
 };
 
 // ─── Responsive hook (breakpoint at 768 px) ───────────────────────────────────
@@ -206,9 +208,20 @@ export default function LiveAttendanceMonitoringScreen() {
   const renderStatus = (status) => {
     const s = STATUS[status];
     if (!s) return null;
+
+    const labels = {
+      Present: "Present",
+      Absent: "Absent",
+      Late: "Late",
+      NotMarked: "Not Marked",
+    };
+
+    const label = labels[status] ?? status;
+    const isLong = label.length > 7; // "Not Marked" is long, others are short
+
     return (
       <View style={{
-        paddingHorizontal: vw * 2.5,
+        paddingHorizontal: isLong ? vw * 1.5 : vw * 2.5,
         paddingVertical: vh * 0.5,
         borderRadius: 20,
         alignSelf: "center",
@@ -216,8 +229,15 @@ export default function LiveAttendanceMonitoringScreen() {
         borderWidth: 1,
         borderColor: s.border,
       }}>
-        <Text style={{ color: s.text, fontSize: vh * 1.4, fontWeight: "600" }}>
-          {status}
+        <Text
+          numberOfLines={1}
+          style={{
+            color: s.text,
+            fontSize: isLong ? vh * 1.2 : vh * 1.4,
+            fontWeight: "600",
+          }}
+        >
+          {label}
         </Text>
       </View>
     );
@@ -373,7 +393,7 @@ export default function LiveAttendanceMonitoringScreen() {
 
       {/* Filter chips */}
       <View style={{ flexDirection: "row", marginTop: vh * 1.5, gap: vw * 2, flexWrap: "wrap" }}>
-        {["all", "present", "absent", "late"].map((item) => (
+        {["all", "present", "absent", "late", "not_marked"].map((item) => (
           <TouchableOpacity
             key={item}
             onPress={() => setFilter(item)}
@@ -392,7 +412,7 @@ export default function LiveAttendanceMonitoringScreen() {
               color: filter === item ? "#000" : C.muted,
               fontWeight: filter === item ? "700" : "500",
             }}>
-              {item}
+              {item === "not_marked" ? "Not Marked" : item}
             </Text>
           </TouchableOpacity>
         ))}

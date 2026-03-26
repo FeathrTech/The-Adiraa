@@ -187,12 +187,18 @@ function SiteStatusCard({
     cvw,
     vh,
     isTablet,
+    isNearest,       // auto-selected / nearest site
+    isSelected,      // manually selected by user
 }) {
-    const borderColor = checkingLocation
-        ? C.border
-        : withinRadius
-            ? C.greenBorder
-            : C.orangeBorder;
+    const borderColor = isSelected
+        ? C.gold
+        : checkingLocation
+            ? C.border
+            : withinRadius
+                ? C.greenBorder
+                : isNearest
+                    ? C.blueBorder
+                    : C.orangeBorder;
 
     return (
         <View
@@ -240,6 +246,7 @@ function SiteStatusCard({
                         color={checkingLocation ? C.gold : withinRadius ? C.green : C.orange}
                     />
                 </View>
+
                 <View>
                     <Text
                         style={{
@@ -259,6 +266,32 @@ function SiteStatusCard({
                     >
                         {site?.name ?? "—"}
                     </Text>
+
+                    {/* SELECTED / NEAREST label */}
+                    {isSelected && (
+                        <Text style={{
+                            color: C.gold,
+                            fontSize: isTablet ? cvw * 1.6 : cvw * 2.8,
+                            fontWeight: "700",
+                            letterSpacing: 1,
+                            textTransform: "uppercase",
+                            marginTop: 2,
+                        }}>
+                            SELECTED
+                        </Text>
+                    )}
+                    {!isSelected && isNearest && (
+                        <Text style={{
+                            color: C.blue,
+                            fontSize: isTablet ? cvw * 1.6 : cvw * 2.8,
+                            fontWeight: "700",
+                            letterSpacing: 1,
+                            textTransform: "uppercase",
+                            marginTop: 2,
+                        }}>
+                            NEAREST
+                        </Text>
+                    )}
                 </View>
             </View>
 
@@ -327,10 +360,9 @@ function SiteStatusCard({
                 </View>
             )}
 
-            {/* ── OUTSIDE RADIUS: show current location + override note ── */}
+            {/* Outside radius: location box + override note */}
             {!checkingLocation && !withinRadius && (
                 <>
-                    {/* Current location box */}
                     {realUserLocation && (
                         <View
                             style={{
@@ -343,7 +375,6 @@ function SiteStatusCard({
                                 gap: 6,
                             }}
                         >
-                            {/* Label row */}
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                                 <Ionicons
                                     name="navigate-circle-outline"
@@ -363,7 +394,6 @@ function SiteStatusCard({
                                 </Text>
                             </View>
 
-                            {/* Address if available */}
                             {currentAddress ? (
                                 <Text
                                     style={{
@@ -377,7 +407,6 @@ function SiteStatusCard({
                                 </Text>
                             ) : null}
 
-                            {/* Coords always shown */}
                             <Text
                                 style={{
                                     color: C.muted,
@@ -386,12 +415,12 @@ function SiteStatusCard({
                                     letterSpacing: 0.3,
                                 }}
                             >
-                                {realUserLocation.latitude.toFixed(6)}, {realUserLocation.longitude.toFixed(6)}
+                                {realUserLocation.latitude.toFixed(6)},{" "}
+                                {realUserLocation.longitude.toFixed(6)}
                             </Text>
                         </View>
                     )}
 
-                    {/* Override / blocked note */}
                     <View
                         style={{
                             marginTop: vh * 1,
@@ -436,7 +465,6 @@ export default function CheckOutScreen() {
     const { vw, vh, cvw, isTablet } = useResponsive();
 
     const permissions = useAuthStore((s) => s.permissions);
-    
 
     const cameraRef = useRef(null);
 
@@ -446,42 +474,70 @@ export default function CheckOutScreen() {
 
     const [photo, setPhoto] = useState(null);
     const [realUserLocation, setRealUserLocation] = useState(null);
-    const [currentAddress, setCurrentAddress] = useState(null); // reverse-geocoded
-    const [site, setSite] = useState(null);
+    const [currentAddress, setCurrentAddress] = useState(null);
+
+    // ── Multi-site state (mirrors CheckIn) ────────────────────────────────────
+    const [sites, setSites] = useState([]);
+    const [activeSite, setActiveSite] = useState(null);
+    const [siteDistances, setSiteDistances] = useState({});
+    const [selectedSite, setSelectedSite] = useState(null);
+
     const [withinRadius, setWithinRadius] = useState(false);
     const [distance, setDistance] = useState(null);
     const [loading, setLoading] = useState(false);
     const [checkingLocation, setCheckingLocation] = useState(true);
     const [allowOutsideRadius, setAllowOutsideRadius] = useState(false);
+
     if (!can(permissions, "attendance.checkout")) return null;
 
-    // ── GPS fetch ─────────────────────────────────────────────────────────────
-    const fetchLocation = useCallback(async (siteData) => {
-        if (!siteData) return;
+    // ── GPS fetch (multi-site, mirrors CheckIn) ───────────────────────────────
+    const fetchLocation = useCallback(async (siteList) => {
+        if (!siteList || siteList.length === 0) return;
         try {
             setCheckingLocation(true);
+
             const loc = await Location.getCurrentPositionAsync({
                 accuracy: Location.Accuracy.Balanced,
             });
             const { latitude, longitude } = loc.coords;
-            const dist = getDistanceInMeters(
-                latitude, longitude,
-                siteData.latitude, siteData.longitude
-            );
-            const inRange = dist <= siteData.radius + 15;
 
-            console.log("──────── CHECKOUT LOCATION DEBUG ────────");
-            console.log("User:", latitude, longitude);
-            console.log("Site:", siteData.latitude, siteData.longitude);
-            console.log("Distance (m):", dist.toFixed(1));
-            console.log("In range:", inRange);
-            console.log("─────────────────────────────────────────");
+            let nearest = null;
+            let minDist = Infinity;
+            let distancesMap = {};
 
-            setDistance(dist);
-            setWithinRadius(inRange);
+            siteList.forEach((s) => {
+                const dist = getDistanceInMeters(latitude, longitude, s.latitude, s.longitude);
+                const inRange = dist <= s.radius + 15;
+                distancesMap[s.id] = { distance: dist, withinRadius: inRange };
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = s;
+                }
+            });
+
+            setSiteDistances(distancesMap);
             setRealUserLocation({ latitude, longitude });
 
-            // Reverse geocode only when outside radius — no point when inside
+            // Honour manual selection; otherwise auto-pick
+            if (selectedSite) {
+                const data = distancesMap[selectedSite.id];
+                setActiveSite(selectedSite);
+                setDistance(data?.distance);
+                setWithinRadius(data?.withinRadius);
+            } else {
+                const chosen =
+                    siteList.find((s) => distancesMap[s.id].withinRadius) || nearest;
+                setActiveSite(chosen);
+                setDistance(distancesMap[chosen.id].distance);
+                setWithinRadius(distancesMap[chosen.id].withinRadius);
+            }
+
+            // Reverse geocode only when outside radius
+            const effectiveSite = selectedSite ||
+                siteList.find((s) => distancesMap[s.id].withinRadius) ||
+                nearest;
+            const inRange = distancesMap[effectiveSite.id].withinRadius;
+
             if (!inRange) {
                 try {
                     const places = await Location.reverseGeocodeAsync({ latitude, longitude });
@@ -489,11 +545,11 @@ export default function CheckOutScreen() {
                         const p = places[0];
                         const parts = [p.name, p.street, p.district, p.city, p.region]
                             .filter(Boolean)
-                            .filter((v, i, arr) => arr.indexOf(v) === i); // dedupe
+                            .filter((v, i, arr) => arr.indexOf(v) === i);
                         setCurrentAddress(parts.slice(0, 3).join(", "));
                     }
                 } catch {
-                    setCurrentAddress(null); // coords will still show
+                    setCurrentAddress(null);
                 }
             } else {
                 setCurrentAddress(null);
@@ -503,7 +559,7 @@ export default function CheckOutScreen() {
         } finally {
             setCheckingLocation(false);
         }
-    }, []);
+    }, [selectedSite]);
 
     // ── Bootstrap ─────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -539,7 +595,7 @@ export default function CheckOutScreen() {
                     return;
                 }
 
-                setSite(siteData);
+                setSites(siteData);
 
                 if (configRes.status === "fulfilled") {
                     setAllowOutsideRadius(!!configRes.value.data?.allowOutsideRadius);
@@ -559,7 +615,7 @@ export default function CheckOutScreen() {
         if (!cameraRef.current) return;
         const result = await cameraRef.current.takePictureAsync({ quality: 0.6 });
         setPhoto(result);
-        if (site) await fetchLocation(site);
+        if (sites.length) await fetchLocation(sites);
     };
 
     const redoPhoto = () => setPhoto(null);
@@ -580,8 +636,9 @@ export default function CheckOutScreen() {
             return;
         }
 
-        const submitLat = withinRadius ? site.latitude : realUserLocation.latitude;
-        const submitLng = withinRadius ? site.longitude : realUserLocation.longitude;
+        // Use site coords when in range; real coords when outside (with permission)
+        const submitLat = withinRadius ? activeSite.latitude : realUserLocation.latitude;
+        const submitLng = withinRadius ? activeSite.longitude : realUserLocation.longitude;
 
         try {
             setLoading(true);
@@ -606,7 +663,11 @@ export default function CheckOutScreen() {
 
     // ── Derived ───────────────────────────────────────────────────────────────
     const locationReady = !checkingLocation && realUserLocation !== null;
-    const canSubmit = photo !== null && locationReady && (withinRadius || allowOutsideRadius) && !loading;
+    const canSubmit =
+        photo !== null &&
+        locationReady &&
+        (withinRadius || allowOutsideRadius) &&
+        !loading;
     const submitDisabled = !canSubmit;
 
     let btnLabel = "Capture Photo";
@@ -627,7 +688,14 @@ export default function CheckOutScreen() {
     // ── Permissions splash ────────────────────────────────────────────────────
     if (!cameraPermission?.granted || locationPermission === null) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center", alignItems: "center" }}>
+            <SafeAreaView
+                style={{
+                    flex: 1,
+                    backgroundColor: C.bg,
+                    justifyContent: "center",
+                    alignItems: "center",
+                }}
+            >
                 <StatusBar barStyle="light-content" />
                 <ActivityIndicator size="large" color={C.gold} />
                 <Text style={{ color: C.muted, marginTop: 12, letterSpacing: 1.5, fontSize: 13 }}>
@@ -717,65 +785,161 @@ export default function CheckOutScreen() {
                         {!photo ? (
                             <>
                                 <View style={{ flex: 1 }} pointerEvents="none">
-                                    <CameraView ref={cameraRef} facing={cameraType} style={{ flex: 1 }} />
+                                    <CameraView
+                                        ref={cameraRef}
+                                        facing={cameraType}
+                                        style={{ flex: 1 }}
+                                    />
                                 </View>
 
                                 {/* Flip */}
                                 <TouchableOpacity
                                     onPress={toggleCamera}
                                     style={{
-                                        position: "absolute", top: 12, right: 12,
+                                        position: "absolute",
+                                        top: 12,
+                                        right: 12,
                                         backgroundColor: "rgba(0,0,0,0.55)",
-                                        borderWidth: 1, borderColor: C.borderGold,
+                                        borderWidth: 1,
+                                        borderColor: C.borderGold,
                                         borderRadius: 12,
-                                        paddingHorizontal: 12, paddingVertical: 7,
-                                        flexDirection: "row", alignItems: "center", gap: 5,
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 7,
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        gap: 5,
                                     }}
                                 >
-                                    <Ionicons name="camera-reverse-outline" size={isTablet ? cvw * 2.4 : cvw * 4.5} color={C.gold} />
-                                    <Text style={{ color: C.gold, fontWeight: "600", fontSize: isTablet ? cvw * 1.8 : cvw * 3.2 }}>
+                                    <Ionicons
+                                        name="camera-reverse-outline"
+                                        size={isTablet ? cvw * 2.4 : cvw * 4.5}
+                                        color={C.gold}
+                                    />
+                                    <Text
+                                        style={{
+                                            color: C.gold,
+                                            fontWeight: "600",
+                                            fontSize: isTablet ? cvw * 1.8 : cvw * 3.2,
+                                        }}
+                                    >
                                         Flip
                                     </Text>
                                 </TouchableOpacity>
 
                                 {/* Guide */}
-                                <View style={{ position: "absolute", bottom: 12, left: 0, right: 0, alignItems: "center" }}>
-                                    <View style={{ backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 }}>
-                                        <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>
+                                <View
+                                    style={{
+                                        position: "absolute",
+                                        bottom: 12,
+                                        left: 0,
+                                        right: 0,
+                                        alignItems: "center",
+                                    }}
+                                >
+                                    <View
+                                        style={{
+                                            backgroundColor: "rgba(0,0,0,0.55)",
+                                            borderRadius: 8,
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 5,
+                                        }}
+                                    >
+                                        <Text
+                                            style={{
+                                                color: C.muted,
+                                                fontSize: isTablet ? cvw * 1.8 : cvw * 3,
+                                            }}
+                                        >
                                             Position your face in frame
                                         </Text>
                                     </View>
                                 </View>
                             </>
                         ) : (
-                            <Image source={{ uri: photo.uri }} style={{ flex: 1 }} resizeMode="cover" />
+                            <Image
+                                source={{ uri: photo.uri }}
+                                style={{ flex: 1 }}
+                                resizeMode="cover"
+                            />
                         )}
                     </View>
 
-                    {/* ── SITE STATUS ── */}
-                    {site && (
-                        <SiteStatusCard
-                            site={site}
-                            withinRadius={withinRadius}
-                            checkingLocation={checkingLocation}
-                            allowOutsideRadius={allowOutsideRadius}
-                            distance={distance}
-                            realUserLocation={realUserLocation}
-                            currentAddress={currentAddress}
-                            cvw={cvw}
-                            vh={vh}
-                            isTablet={isTablet}
-                        />
+                    {/* ── SELECTED SITE BANNER ── */}
+                    {selectedSite && (
+                        <Text
+                            style={{
+                                color: C.gold,
+                                textAlign: "center",
+                                fontWeight: "600",
+                                fontSize: isTablet ? cvw * 2 : cvw * 3.5,
+                                letterSpacing: 0.5,
+                            }}
+                        >
+                            Selected Site: {selectedSite.name}
+                        </Text>
+                    )}
+
+                    {/* ── SITE STATUS CARDS ── */}
+                    {sites.length > 0 && (
+                        <View style={{ gap: vh * 1.5 }}>
+                            {sites.map((s) => {
+                                const data = siteDistances[s.id] || {};
+                                const isNearest = activeSite?.id === s.id;
+
+                                return (
+                                    <TouchableOpacity
+                                        key={s.id}
+                                        activeOpacity={0.85}
+                                        onPress={() => {
+                                            setSelectedSite(s);
+                                            const d = siteDistances[s.id] || {};
+                                            setActiveSite(s);
+                                            setDistance(d.distance);
+                                            setWithinRadius(d.withinRadius);
+                                        }}
+                                    >
+                                        <SiteStatusCard
+                                            site={s}
+                                            withinRadius={data.withinRadius}
+                                            checkingLocation={checkingLocation}
+                                            allowOutsideRadius={allowOutsideRadius}
+                                            distance={data.distance}
+                                            realUserLocation={realUserLocation}
+                                            currentAddress={currentAddress}
+                                            cvw={cvw}
+                                            vh={vh}
+                                            isTablet={isTablet}
+                                            isNearest={isNearest}
+                                            isSelected={selectedSite?.id === s.id}
+                                        />
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
                     )}
 
                     {/* ── RETAKE ── */}
                     {photo && (
                         <TouchableOpacity
                             onPress={redoPhoto}
-                            style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 6,
+                            }}
                         >
-                            <Ionicons name="refresh-outline" size={isTablet ? cvw * 2 : cvw * 4} color={C.muted} />
-                            <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.5 }}>
+                            <Ionicons
+                                name="refresh-outline"
+                                size={isTablet ? cvw * 2 : cvw * 4}
+                                color={C.muted}
+                            />
+                            <Text
+                                style={{
+                                    color: C.muted,
+                                    fontSize: isTablet ? cvw * 2 : cvw * 3.5,
+                                }}
+                            >
                                 Retake Photo
                             </Text>
                         </TouchableOpacity>
@@ -787,7 +951,8 @@ export default function CheckOutScreen() {
                         disabled={photo ? submitDisabled : false}
                         activeOpacity={0.85}
                         style={{
-                            backgroundColor: photo && submitDisabled ? "rgba(201,162,39,0.28)" : C.gold,
+                            backgroundColor:
+                                photo && submitDisabled ? "rgba(201,162,39,0.28)" : C.gold,
                             borderRadius: 16,
                             paddingVertical: isTablet ? cvw * 1.6 : cvw * 4,
                             alignItems: "center",
@@ -803,11 +968,16 @@ export default function CheckOutScreen() {
                                 <Ionicons
                                     name={btnIcon}
                                     size={isTablet ? cvw * 2.6 : cvw * 5}
-                                    color={photo && submitDisabled ? "rgba(0,0,0,0.35)" : "#000"}
+                                    color={
+                                        photo && submitDisabled ? "rgba(0,0,0,0.35)" : "#000"
+                                    }
                                 />
                                 <Text
                                     style={{
-                                        color: photo && submitDisabled ? "rgba(0,0,0,0.35)" : "#000",
+                                        color:
+                                            photo && submitDisabled
+                                                ? "rgba(0,0,0,0.35)"
+                                                : "#000",
                                         fontWeight: "800",
                                         fontSize: isTablet ? cvw * 2.6 : cvw * 4,
                                         letterSpacing: 0.3,

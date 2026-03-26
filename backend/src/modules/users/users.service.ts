@@ -43,10 +43,21 @@ export class UsersService extends TenantAwareService<User> {
   // ============================================================
 
   async findAll(currentUser: User) {
-    return this.userRepo.find({
-      where: { tenant: { id: currentUser.tenant.id } },
-      relations: ['roles', 'roles.permissions', 'location'],
-    });
+    return this.userRepo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'roles')
+      .leftJoinAndSelect('roles.permissions', 'permissions')
+      .leftJoinAndSelect('user.locations', 'locations')
+      .where('user.tenantId = :tenantId', {
+        tenantId: currentUser.tenant.id,
+      })
+      .addSelect([
+        'user.idProofUrl',
+        'user.profilePhotoUrl',
+        'user.shiftStartTime',
+        'user.shiftEndTime',
+      ])
+      .getMany();
   }
 
   // ============================================================
@@ -54,7 +65,17 @@ export class UsersService extends TenantAwareService<User> {
   // ============================================================
 
   async findOne(id: string, currentUser: User) {
-    const user = await this.findOneByTenant(id, currentUser);
+    const user = await this.userRepo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'roles')
+      .leftJoinAndSelect('roles.permissions', 'permissions')
+      .leftJoinAndSelect('user.locations', 'locations')
+      .where('user.id = :id', { id })
+      .andWhere('user.tenantId = :tenantId', {
+        tenantId: currentUser.tenant.id,
+      })
+      .addSelect(['user.idProofUrl', 'user.profilePhotoUrl'])
+      .getOne();
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
@@ -69,7 +90,7 @@ export class UsersService extends TenantAwareService<User> {
   }
 
   // ============================================================
-  // CREATE USER (UPDATED)
+  // CREATE USER
   // ============================================================
 
   async createUser(
@@ -77,13 +98,16 @@ export class UsersService extends TenantAwareService<User> {
       name: string;
       mobile: string;
       password: string;
-      locationId?: string;
+      locationIds?: string[];   // ← now accepts multiple
+      locationId?: string;      // ← kept for backward compat (single)
       roleIds: string[];
       profilePhotoUrl?: string;
       idProofUrl?: string;
       shiftStartTime?: string;
       shiftEndTime?: string;
       email?: string;
+      allowSelfPhotoUpload?: boolean;  // ← add
+      allowSelfIdUpload?: boolean;
     },
     currentUser: User,
   ) {
@@ -128,22 +152,42 @@ export class UsersService extends TenantAwareService<User> {
 
     /*
     ============================================================
-    LOCATION (OPTIONAL)
+    LOCATIONS (OPTIONAL — supports both locationIds[] and legacy locationId)
     ============================================================
     */
 
-    let location: Location | null = null;
+    let locations: Location[] = [];
 
-    if (data.locationId) {
-      location = await this.locationRepo.findOne({
+    // Normalise: prefer locationIds array, fall back to single locationId
+    let parsedLocationIds: string[] = [];
+
+    if (data.locationIds) {
+      if (Array.isArray(data.locationIds)) {
+        parsedLocationIds = data.locationIds;
+      } else if (typeof data.locationIds === 'string') {
+        try {
+          parsedLocationIds = JSON.parse(data.locationIds);
+        } catch {
+          throw new ForbiddenException('Invalid locationIds format');
+        }
+      }
+    }
+    const incomingIds: string[] = parsedLocationIds.length
+      ? parsedLocationIds
+      : data.locationId
+        ? [data.locationId]
+        : [];
+
+    if (incomingIds.length) {
+      locations = await this.locationRepo.find({
         where: {
-          id: data.locationId,
+          id: In(incomingIds),
           tenant: { id: tenantId },
         },
       });
 
-      if (!location) {
-        throw new NotFoundException('Location not found');
+      if (!locations.length) {
+        throw new NotFoundException('Location(s) not found');
       }
     }
 
@@ -186,13 +230,15 @@ export class UsersService extends TenantAwareService<User> {
       email: data.email ?? undefined,
       password: hashedPassword,
       tenant: currentUser.tenant,
-      location: location ?? null,
+      locations,
       roles,
       profilePhotoUrl: data.profilePhotoUrl ?? undefined,
       idProofUrl: data.idProofUrl ?? undefined,
       shiftStartTime: data.shiftStartTime ?? undefined,
       shiftEndTime: data.shiftEndTime ?? undefined,
       isActive: true,
+      allowSelfPhotoUpload: data.allowSelfPhotoUpload ?? false,  // ← add
+      allowSelfIdUpload: data.allowSelfIdUpload ?? false,
     });
 
     const savedUser = await this.userRepo.save(user);
@@ -203,7 +249,7 @@ export class UsersService extends TenantAwareService<User> {
   }
 
   // ============================================================
-  // UPDATE USER (UPDATED)
+  // UPDATE USER
   // ============================================================
 
   async updateUser(
@@ -211,6 +257,7 @@ export class UsersService extends TenantAwareService<User> {
     data: {
       name?: string;
       locationId?: string | null;
+      locationIds?: string[] | string | null; // 👈 allow string also
       roleIds?: string[];
       isActive?: boolean;
       profilePhotoUrl?: string;
@@ -218,6 +265,10 @@ export class UsersService extends TenantAwareService<User> {
       shiftStartTime?: string;
       shiftEndTime?: string;
       email?: string;
+      mobile?: string;
+      password?: string;
+      allowSelfPhotoUpload?: boolean;  // ← add
+      allowSelfIdUpload?: boolean;     // ← add
     },
     currentUser: User,
   ) {
@@ -244,14 +295,69 @@ export class UsersService extends TenantAwareService<User> {
       user.profilePhotoUrl = data.profilePhotoUrl;
     if (data.idProofUrl !== undefined)
       user.idProofUrl = data.idProofUrl;
+    if (data.allowSelfPhotoUpload !== undefined)
+      user.allowSelfPhotoUpload = data.allowSelfPhotoUpload;   // ← add
+    if (data.allowSelfIdUpload !== undefined)
+      user.allowSelfIdUpload = data.allowSelfIdUpload;
+
+    if (data.mobile !== undefined && data.mobile !== user.mobile) {
+      const existingMobile = await this.userRepo.findOne({
+        where: {
+          mobile: data.mobile,
+          tenant: { id: tenantId },
+        },
+      });
+
+      if (existingMobile && existingMobile.id !== userId) {
+        throw new ForbiddenException(
+          'Mobile number is already in use by another staff member',
+        );
+      }
+
+      user.mobile = data.mobile;
+    }
 
     // ============================================================
-    // LOCATION UPDATE (OPTIONAL / REMOVABLE)
+    // 🔥 FIXED LOCATION UPDATE (handles stringified JSON properly)
     // ============================================================
 
-    if (data.locationId !== undefined) {
+    let parsedLocationIds: string[] = [];
+
+    if (data.locationIds) {
+      if (Array.isArray(data.locationIds)) {
+        parsedLocationIds = data.locationIds;
+      } else if (typeof data.locationIds === 'string') {
+        try {
+          parsedLocationIds = JSON.parse(data.locationIds);
+        } catch {
+          throw new ForbiddenException('Invalid locationIds format');
+        }
+      }
+    }
+
+    const hasMulti = data.locationIds !== undefined;
+    const hasSingle = data.locationId !== undefined;
+
+    if (hasMulti) {
+      if (!parsedLocationIds.length) {
+        user.locations = [];
+      } else {
+        const locs = await this.locationRepo.find({
+          where: {
+            id: In(parsedLocationIds),
+            tenant: { id: tenantId },
+          },
+        });
+
+        if (!locs.length) {
+          throw new NotFoundException('Location(s) not found');
+        }
+
+        user.locations = locs;
+      }
+    } else if (hasSingle) {
       if (data.locationId === null) {
-        user.location = null;
+        user.locations = [];
       } else {
         const location = await this.locationRepo.findOne({
           where: {
@@ -260,15 +366,16 @@ export class UsersService extends TenantAwareService<User> {
           },
         });
 
-        if (!location)
+        if (!location) {
           throw new NotFoundException('Location not found');
+        }
 
-        user.location = location;
+        user.locations = [location];
       }
     }
 
     // ============================================================
-    // ROLE UPDATE (WITH LAST FULL ACCESS PROTECTION)
+    // ROLE UPDATE
     // ============================================================
 
     if (data.roleIds) {
@@ -295,16 +402,15 @@ export class UsersService extends TenantAwareService<User> {
       );
 
       if (hadFullAccess) {
-        const usersWithFullAccess =
-          await this.userRepo
-            .createQueryBuilder('user')
-            .leftJoin('user.roles', 'role')
-            .leftJoin('role.permissions', 'permission')
-            .groupBy('user.id')
-            .having('COUNT(permission.id) = :count', {
-              count: totalPermissions,
-            })
-            .getCount();
+        const usersWithFullAccess = await this.userRepo
+          .createQueryBuilder('user')
+          .leftJoin('user.roles', 'role')
+          .leftJoin('role.permissions', 'permission')
+          .groupBy('user.id')
+          .having('COUNT(permission.id) = :count', {
+            count: totalPermissions,
+          })
+          .getCount();
 
         const stillHasFullAccess = roles.some(
           (r) => r.permissions.length === totalPermissions,
@@ -320,21 +426,98 @@ export class UsersService extends TenantAwareService<User> {
       user.roles = roles;
     }
 
-    if (typeof data.isActive === 'boolean')
+    if (typeof data.isActive === 'boolean') {
       user.isActive = data.isActive;
+    }
 
     await this.userRepo.save(user);
 
     const updatedUser = await this.userRepo.findOne({
       where: { id: user.id },
-      relations: ['roles', 'roles.permissions', 'location'],
+      relations: ['roles', 'roles.permissions', 'locations'],
     });
 
     this.realtime.emit('user:updated', updatedUser);
 
     return updatedUser;
   }
+  // users.service.ts — updateOwnProfilePhoto
 
+  async updateOwnProfilePhoto(userId: string, url: string, currentUser: User) {
+    console.log('=== updateOwnProfilePhoto ===');
+    console.log('userId:', userId);
+    console.log('url:', url);
+    console.log('currentUser.tenant:', currentUser?.tenant?.id);  // ← CHECK THIS
+
+    const user = await this.userRepo.findOne({
+      where: {
+        id: userId,
+        tenant: { id: currentUser.tenant.id },
+      },
+      relations: ['roles', 'roles.permissions', 'locations'],
+    });
+
+    console.log('user found:', user ? 'YES' : 'NO');  // ← CHECK THIS
+    console.log('allowSelfPhotoUpload:', user?.allowSelfPhotoUpload);  // ← CHECK THIS
+
+    if (!user) throw new NotFoundException('User not found');
+
+    if (!user.allowSelfPhotoUpload) {
+      throw new ForbiddenException('Self photo upload not permitted');
+    }
+
+    user.profilePhotoUrl = url;
+
+    try {
+      await this.userRepo.save(user);
+      console.log('save SUCCESS');
+    } catch (saveErr) {
+      console.error('save FAILED:', saveErr.message);
+      throw saveErr;
+    }
+
+    const updated = await this.userRepo.findOne({
+      where: { id: userId },
+      relations: ['roles', 'roles.permissions', 'locations'],
+    });
+
+    console.log('updated user:', updated ? 'YES' : 'NO');
+
+    this.realtime.emit('user:updated', updated);
+
+    return updated;
+  }
+
+  // ============================================================
+  // SELF UPLOAD — ID PROOF
+  // ============================================================
+  async updateOwnIdProof(userId: string, url: string, currentUser: User) {
+    const user = await this.userRepo.findOne({
+      where: {
+        id: userId,
+        tenant: { id: currentUser.tenant.id },
+      },
+      relations: ['roles', 'roles.permissions', 'locations'],
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+
+    if (!user.allowSelfIdUpload) {
+      throw new ForbiddenException('Self ID upload not permitted');
+    }
+
+    user.idProofUrl = url;
+    await this.userRepo.save(user);
+
+    const updated = await this.userRepo.findOne({
+      where: { id: userId },
+      relations: ['roles', 'roles.permissions', 'locations'],
+    });
+
+    this.realtime.emit('user:updated', updated);
+
+    return updated;
+  }
   // ============================================================
   // DEACTIVATE USER
   // ============================================================
@@ -353,6 +536,11 @@ export class UsersService extends TenantAwareService<User> {
     return updatedUser;
   }
 
+  // ============================================================
+  // GET USER SITE(S)
+  // Returns array of all assigned locations with radius config
+  // ============================================================
+
   async getUserSite(currentUser: User) {
 
     const user = await this.userRepo.findOne({
@@ -360,19 +548,17 @@ export class UsersService extends TenantAwareService<User> {
         id: currentUser.id,
         tenant: { id: currentUser.tenant.id },
       },
-      relations: ['location', 'roles'],
+      relations: ['locations', 'roles'],
     });
 
-    if (!user?.location) {
+    if (!user?.locations?.length) {
       return null;
     }
 
     const role = user.roles?.[0];
-
     let allowOutsideRadius = false;
 
     if (role) {
-
       const config = await this.configRepo.findOne({
         where: {
           role: { id: role.id },
@@ -383,13 +569,26 @@ export class UsersService extends TenantAwareService<User> {
       allowOutsideRadius = config?.allowOutsideRadius ?? false;
     }
 
-    return {
-      id: user.location.id,
-      name: user.location.name,
-      latitude: user.location.latitude,
-      longitude: user.location.longitude,
-      radius: user.location.allowedRadius || 100,
+    // Return all assigned locations so check-in screen can GPS-match
+    return user.locations.map((loc) => ({
+      id: loc.id,
+      name: loc.name,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      radius: loc.allowedRadius || 100,
       allowOutsideRadius,
-    };
+    }));
+  }
+
+  // ============================================================
+  // PERMANENT DELETE USER
+  // ============================================================
+
+  async permanentDeleteUser(id: string, currentUser: User) {
+    const user = await this.findOneByTenant(id, currentUser);
+    if (!user) throw new NotFoundException('User not found');
+    await this.userRepo.remove(user);
+    this.realtime.emit('user:deleted', id);
+    return { success: true };
   }
 }

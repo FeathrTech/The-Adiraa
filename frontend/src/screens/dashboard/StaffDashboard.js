@@ -13,7 +13,14 @@ import React, { useEffect, useState } from "react";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAuthStore } from "../../store/authStore";
 import { can } from "../../config/permissionMap";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import { Ionicons } from "@expo/vector-icons";
 import api from "../../api/axios";
+import {
+  uploadOwnProfilePhoto,
+  uploadOwnIdProof,
+} from "../../api/userApi";
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 const C = {
@@ -30,7 +37,7 @@ const C = {
   faint: "#333",
 };
 
-// ─── Responsive hook  ────────────────────────────────────────────────────────
+// ─── Responsive hook ─────────────────────────────────────────────────────────
 function useResponsive() {
   const { width, height } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -47,6 +54,7 @@ export default function StaffDashboard() {
   const { vw, vh, cvw, isTablet } = useResponsive();
 
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser); // ← to refresh user after upload
   const permissions = useAuthStore((s) => s.permissions) || [];
   const logout = useAuthStore((s) => s.logout);
 
@@ -54,15 +62,18 @@ export default function StaffDashboard() {
   const canCheckOut = can(permissions, "attendance.checkout");
   const canViewOwn = can(permissions, "attendance.view.own");
 
+  // ── Self-upload flags — read directly from user object ───────────────────
+  const canUploadOwnPhoto = !!user?.allowSelfPhotoUpload;
+  const canUploadOwnIdProof = !!user?.allowSelfIdUpload;
+  const canSelfUpload = canUploadOwnPhoto || canUploadOwnIdProof;
+
   const [loading, setLoading] = useState(true);
   const [attendance, setAttendance] = useState(null);
   const [workingSeconds, setWorkingSeconds] = useState(0);
+  const [uploading, setUploading] = useState(false); // ← upload loading state
 
   const loadAttendance = async () => {
     if (!user) return;
-    // ✅ FIX: Always load attendance for anyone who can check in or out,
-    // not just those with canViewOwn — otherwise attendance stays null
-    // and the check-in button never disables after a successful check-in.
     if (!canViewOwn && !canCheckIn && !canCheckOut) { setLoading(false); return; }
     try {
       setLoading(true);
@@ -82,13 +93,100 @@ export default function StaffDashboard() {
 
   useEffect(() => {
     let interval;
-    // ✅ FIX: Timer should run for anyone who is actively checked in,
-    // not only those with canViewOwn.
     if (attendance?.checkedIn && !attendance?.checkedOut) {
       interval = setInterval(() => setWorkingSeconds((p) => p + 1), 1000);
     }
     return () => clearInterval(interval);
   }, [attendance]);
+
+  // ── Upload handlers ───────────────────────────────────────────────────────
+
+  const doUploadPhoto = async (asset) => {
+    try {
+      setUploading(true);
+      const updatedUser = await uploadOwnProfilePhoto(asset);
+      if (updatedUser) setUser(updatedUser);
+      Alert.alert("Success", "Profile photo updated");
+    } catch (e) {
+      Alert.alert("Error", e.response?.data?.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const doUploadIdProof = async (asset) => {
+    try {
+      setUploading(true);
+      const updatedUser = await uploadOwnIdProof(asset);
+      if (updatedUser) setUser(updatedUser);
+      Alert.alert("Success", "ID proof uploaded");
+    } catch (e) {
+      Alert.alert("Error", e.response?.data?.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const pickAndUploadPhoto = () => {
+    Alert.alert("Profile Photo", "Choose option", [
+      {
+        text: "Camera",
+        onPress: async () => {
+          const r = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.6,
+          });
+          if (!r.canceled) await doUploadPhoto(r.assets[0]);
+        },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          const r = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.6,
+          });
+          if (!r.canceled) await doUploadPhoto(r.assets[0]);
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const pickAndUploadIdProof = () => {
+    Alert.alert("Upload ID Proof", "Choose option", [
+      {
+        text: "Camera",
+        onPress: async () => {
+          const r = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          });
+          if (!r.canceled) await doUploadIdProof(r.assets[0]);
+        },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          const r = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          });
+          if (!r.canceled) await doUploadIdProof(r.assets[0]);
+        },
+      },
+      {
+        text: "Document",
+        onPress: async () => {
+          const r = await DocumentPicker.getDocumentAsync({
+            type: ["image/*", "application/pdf"],
+          });
+          if (!r.canceled) await doUploadIdProof(r.assets[0]);
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  // ── Misc helpers ──────────────────────────────────────────────────────────
 
   const formatTime = (s) => {
     const h = Math.floor(s / 3600).toString().padStart(2, "0");
@@ -150,17 +248,13 @@ export default function StaffDashboard() {
 
   const isActive = attendance?.checkedIn && !attendance?.checkedOut;
 
-  // ─── Shared blocks (layout-agnostic) ────────────────────────────────────
+  // ─── Shared blocks ────────────────────────────────────────────────────────
 
   const Header = () => (
     <View style={{ marginBottom: isTablet ? vh * 4 : vh * 3.5 }}>
       <Text style={{
-        color: C.gold,
-        fontSize: cvw * 2.4,
-        letterSpacing: 3,
-        fontWeight: "700",
-        marginBottom: vh * 0.6,
-        marginTop: vh * 1.5,
+        color: C.gold, fontSize: cvw * 2.4, letterSpacing: 3,
+        fontWeight: "700", marginBottom: vh * 0.6, marginTop: vh * 1.5,
         textTransform: "uppercase",
       }}>
         Staff Portal
@@ -168,16 +262,14 @@ export default function StaffDashboard() {
       <Text style={{
         color: C.white,
         fontSize: isTablet ? cvw * 5 : cvw * 6.5,
-        fontWeight: "800",
-        letterSpacing: -0.5,
+        fontWeight: "800", letterSpacing: -0.5,
       }}>
         {getGreeting()},
       </Text>
       <Text style={{
         color: C.gold,
         fontSize: isTablet ? cvw * 5 : cvw * 6.5,
-        fontWeight: "800",
-        letterSpacing: -0.5,
+        fontWeight: "800", letterSpacing: -0.5,
       }}>
         {user?.name} ✦
       </Text>
@@ -186,31 +278,22 @@ export default function StaffDashboard() {
 
   const ShiftCard = () => (
     <View style={{
-      backgroundColor: C.card,
-      borderRadius: 18,
+      backgroundColor: C.card, borderRadius: 18,
       padding: isTablet ? vh * 2.5 : vh * 2,
-      borderWidth: 1,
-      borderColor: C.borderGold,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
+      borderWidth: 1, borderColor: C.borderGold,
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     }}>
       <View>
         <Text style={{
-          color: C.muted,
-          fontSize: cvw * 2.2,
-          letterSpacing: 2.5,
-          fontWeight: "600",
-          textTransform: "uppercase",
+          color: C.muted, fontSize: cvw * 2.2,
+          letterSpacing: 2.5, fontWeight: "600", textTransform: "uppercase",
         }}>
           Today's Shift
         </Text>
         <Text style={{
           color: C.white,
           fontSize: isTablet ? cvw * 3.8 : cvw * 5,
-          fontWeight: "700",
-          marginTop: 5,
-          letterSpacing: 0.5,
+          fontWeight: "700", marginTop: 5, letterSpacing: 0.5,
         }}>
           {user?.shiftStartTime || "--"}
           <Text style={{ color: C.goldDim }}> – </Text>
@@ -218,19 +301,13 @@ export default function StaffDashboard() {
         </Text>
       </View>
       <View style={{
-        alignItems: "center",
-        justifyContent: "center",
-        width: cvw * 10,
-        height: cvw * 10,
-        borderRadius: cvw * 5,
+        alignItems: "center", justifyContent: "center",
+        width: cvw * 10, height: cvw * 10, borderRadius: cvw * 5,
         backgroundColor: isActive ? "rgba(201,162,39,0.12)" : "rgba(50,50,50,0.5)",
-        borderWidth: 1,
-        borderColor: isActive ? C.borderGold : C.border,
+        borderWidth: 1, borderColor: isActive ? C.borderGold : C.border,
       }}>
         <View style={{
-          width: cvw * 2.5,
-          height: cvw * 2.5,
-          borderRadius: cvw * 1.25,
+          width: cvw * 2.5, height: cvw * 2.5, borderRadius: cvw * 1.25,
           backgroundColor: isActive ? C.gold : C.faint,
         }} />
       </View>
@@ -239,49 +316,36 @@ export default function StaffDashboard() {
 
   const WorkingHeroCard = ({ stretch }) => (
     <View style={{
-      backgroundColor: C.surface,
-      borderRadius: 24,
+      backgroundColor: C.surface, borderRadius: 24,
       padding: isTablet ? vh * 3.5 : vh * 3,
-      borderWidth: 1,
-      borderColor: isActive ? C.borderGold : C.border,
-      alignItems: "center",
-      justifyContent: "center",
+      borderWidth: 1, borderColor: isActive ? C.borderGold : C.border,
+      alignItems: "center", justifyContent: "center",
       ...(stretch ? { flex: 1 } : {}),
     }}>
       <Text style={{
-        color: C.muted,
-        fontSize: cvw * 2.2,
-        letterSpacing: 3,
-        fontWeight: "600",
-        textTransform: "uppercase",
-        marginBottom: vh * 1,
+        color: C.muted, fontSize: cvw * 2.2, letterSpacing: 3,
+        fontWeight: "600", textTransform: "uppercase", marginBottom: vh * 1,
       }}>
         Working Hours
       </Text>
       <Text style={{
         color: isActive ? C.gold : C.faint,
         fontSize: isTablet ? cvw * 10 : cvw * 14,
-        fontWeight: "800",
-        letterSpacing: -2,
+        fontWeight: "800", letterSpacing: -2,
         lineHeight: isTablet ? cvw * 11 : cvw * 14,
       }}>
         {attendance?.checkedIn ? formatTime(workingSeconds) : "00:00:00"}
       </Text>
       <View style={{
         marginTop: vh * 1.5,
-        paddingHorizontal: cvw * 4,
-        paddingVertical: vh * 0.6,
+        paddingHorizontal: cvw * 4, paddingVertical: vh * 0.6,
         borderRadius: 100,
         backgroundColor: "rgba(0,0,0,0.4)",
-        borderWidth: 1,
-        borderColor: statusColor() + "55",
+        borderWidth: 1, borderColor: statusColor() + "55",
       }}>
         <Text style={{
-          color: statusColor(),
-          fontSize: cvw * 2.4,
-          fontWeight: "700",
-          letterSpacing: 2,
-          textTransform: "uppercase",
+          color: statusColor(), fontSize: cvw * 2.4,
+          fontWeight: "700", letterSpacing: 2, textTransform: "uppercase",
         }}>
           {getStatus()}
         </Text>
@@ -310,7 +374,143 @@ export default function StaffDashboard() {
     </View>
   );
 
-  // ─── PHONE layout  (<768 px) ─────────────────────────────────────────────
+  // ── Self-upload card — shown only when at least one flag is true ──────────
+  const SelfUploadCard = () => {
+    if (!canSelfUpload) return null;
+    return (
+      <View style={{
+        backgroundColor: C.card,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: C.borderGold,
+        padding: isTablet ? vh * 2 : vh * 2,
+        gap: isTablet ? vh * 1.2 : vh * 1.5,
+      }}>
+        {/* Section label */}
+        <Text style={{
+          color: C.muted,
+          fontSize: cvw * 2.2,
+          letterSpacing: 2.5,
+          fontWeight: "600",
+          textTransform: "uppercase",
+        }}>
+          My Documents
+        </Text>
+
+        {/* Profile photo upload row */}
+        {canUploadOwnPhoto && (
+          <TouchableOpacity
+            onPress={pickAndUploadPhoto}
+            disabled={uploading}
+            activeOpacity={0.8}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: C.surface,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: C.border,
+              paddingHorizontal: cvw * 4,
+              paddingVertical: isTablet ? vh * 1.5 : vh * 1.8,
+              gap: 12,
+              opacity: uploading ? 0.6 : 1,
+            }}
+          >
+            <View style={{
+              width: isTablet ? cvw * 5 : cvw * 9,
+              height: isTablet ? cvw * 5 : cvw * 9,
+              borderRadius: cvw * 5,
+              backgroundColor: "rgba(201,162,39,0.1)",
+              borderWidth: 1, borderColor: C.borderGold,
+              alignItems: "center", justifyContent: "center",
+            }}>
+              <Ionicons
+                name="camera-outline"
+                size={isTablet ? cvw * 2.4 : cvw * 5}
+                color={C.gold}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{
+                color: C.white, fontWeight: "700",
+                fontSize: isTablet ? cvw * 2.2 : cvw * 3.8,
+              }}>
+                Upload Profile Photo
+              </Text>
+              <Text style={{
+                color: C.muted,
+                fontSize: isTablet ? cvw * 1.7 : cvw * 3,
+                marginTop: 2,
+              }}>
+                Camera or gallery — JPEG
+              </Text>
+            </View>
+            {uploading
+              ? <ActivityIndicator size="small" color={C.gold} />
+              : <Ionicons name="cloud-upload-outline" size={isTablet ? cvw * 2.2 : cvw * 4.5} color={C.muted} />
+            }
+          </TouchableOpacity>
+        )}
+
+        {/* ID proof upload row */}
+        {canUploadOwnIdProof && (
+          <TouchableOpacity
+            onPress={pickAndUploadIdProof}
+            disabled={uploading}
+            activeOpacity={0.8}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: C.surface,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: C.border,
+              paddingHorizontal: cvw * 4,
+              paddingVertical: isTablet ? vh * 1.5 : vh * 1.8,
+              gap: 12,
+              opacity: uploading ? 0.6 : 1,
+            }}
+          >
+            <View style={{
+              width: isTablet ? cvw * 5 : cvw * 9,
+              height: isTablet ? cvw * 5 : cvw * 9,
+              borderRadius: cvw * 5,
+              backgroundColor: "rgba(201,162,39,0.1)",
+              borderWidth: 1, borderColor: C.borderGold,
+              alignItems: "center", justifyContent: "center",
+            }}>
+              <Ionicons
+                name="id-card-outline"
+                size={isTablet ? cvw * 2.4 : cvw * 5}
+                color={C.gold}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{
+                color: C.white, fontWeight: "700",
+                fontSize: isTablet ? cvw * 2.2 : cvw * 3.8,
+              }}>
+                Upload ID Proof
+              </Text>
+              <Text style={{
+                color: C.muted,
+                fontSize: isTablet ? cvw * 1.7 : cvw * 3,
+                marginTop: 2,
+              }}>
+                Image or PDF document
+              </Text>
+            </View>
+            {uploading
+              ? <ActivityIndicator size="small" color={C.gold} />
+              : <Ionicons name="cloud-upload-outline" size={isTablet ? cvw * 2.2 : cvw * 4.5} color={C.muted} />
+            }
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  // ─── PHONE layout (<768px) ────────────────────────────────────────────────
   if (!isTablet) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
@@ -325,15 +525,19 @@ export default function StaffDashboard() {
         >
           <Header />
           <View style={{ marginBottom: vh * 2.5 }}><ShiftCard /></View>
-          {/* ✅ FIX: Show WorkingHeroCard for all roles, not just canViewOwn.
-              The status badge inside still shows "--" when canViewOwn is false. */}
           <View style={{ marginBottom: vh * 2.5 }}><WorkingHeroCard /></View>
           <View style={{ marginBottom: vh * 2.5 }}><ActionButtons /></View>
 
-          {/* View Attendance Records — still correctly gated by canViewOwn */}
+          {/* Self-upload card — only visible if flags are on */}
+          {canSelfUpload && (
+            <View style={{ marginBottom: vh * 2.5 }}>
+              <SelfUploadCard />
+            </View>
+          )}
+
+          {/* View Attendance Records */}
           {canViewOwn && (
             <TouchableOpacity
-              // In StaffDashboard — both phone and tablet layouts
               onPress={() => navigation.navigate("Attendance", { screen: "StaffAttendanceHistory" })}
               activeOpacity={0.8}
               style={{
@@ -369,7 +573,7 @@ export default function StaffDashboard() {
     );
   }
 
-  // ─── TABLET layout (≥768 px) ─────────────────────────────────────────────
+  // ─── TABLET layout (≥768px) ───────────────────────────────────────────────
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <StatusBar barStyle="light-content" />
@@ -381,28 +585,28 @@ export default function StaffDashboard() {
           paddingBottom: vh * 5,
         }}
       >
-        {/* Full-width header */}
         <Header />
 
         {/* Two-column main area */}
         <View style={{ flexDirection: "row", gap: vw * 2, marginBottom: vh * 2 }}>
-
-          {/* LEFT column: Shift + Actions stacked */}
           <View style={{ flex: 1, gap: vh * 2 }}>
             <ShiftCard />
             <ActionButtons />
           </View>
-
-          {/* RIGHT column: Working hours hero — shown for all roles */}
-          {/* ✅ FIX: Removed canViewOwn guard; status inside shows "--" for restricted roles */}
           <View style={{ flex: 1 }}>
             <WorkingHeroCard stretch />
           </View>
         </View>
 
+        {/* Self-upload card — full width, only if at least one flag is on */}
+        {canSelfUpload && (
+          <View style={{ marginBottom: vh * 2 }}>
+            <SelfUploadCard />
+          </View>
+        )}
+
         {/* Footer row */}
         <View style={{ flexDirection: "row", gap: vw * 2 }}>
-          {/* View Attendance Records — still correctly gated by canViewOwn */}
           {canViewOwn && (
             <TouchableOpacity
               onPress={() => navigation.navigate("Attendance")}
@@ -420,7 +624,6 @@ export default function StaffDashboard() {
               <Text style={{ color: C.gold, fontSize: cvw * 3.2 }}>›</Text>
             </TouchableOpacity>
           )}
-
           <TouchableOpacity
             onPress={handleLogout} activeOpacity={0.8}
             style={{
@@ -441,7 +644,7 @@ export default function StaffDashboard() {
   );
 }
 
-// ─── Action Button ───────────────────────────────────────────────────────────
+// ─── Action Button ────────────────────────────────────────────────────────────
 function ActionButton({ label, icon, onPress, disabled, cvw, vh, variant, isTablet }) {
   const isPrimary = variant === "primary";
   return (
@@ -455,8 +658,7 @@ function ActionButton({ label, icon, onPress, disabled, cvw, vh, variant, isTabl
         borderColor: C.borderGold,
         borderRadius: 18,
         paddingVertical: isTablet ? vh * 2.8 : vh * 2.4,
-        alignItems: "center",
-        justifyContent: "center",
+        alignItems: "center", justifyContent: "center",
       }}>
         <Text style={{
           fontSize: isTablet ? cvw * 4.5 : cvw * 6,

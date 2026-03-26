@@ -44,8 +44,8 @@ export class Location {
   })
   tenant: Tenant;
 
-  @OneToMany(() => User, (user) => user.location)
-  users: User[];
+  // @OneToMany(() => User, (user) => user.location)
+  // users: User[];
 
   @OneToMany(() => Attendance, (attendance) => attendance.location)
   attendances: Attendance[];

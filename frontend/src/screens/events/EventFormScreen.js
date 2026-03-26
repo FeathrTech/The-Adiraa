@@ -32,14 +32,11 @@ const C = {
     muted: "#777",
     faint: "#333",
     red: "#E57373",
+    orange: "#F97316",
 };
 
 // ─── Char limits ──────────────────────────────────────────────────────────────
-const LIMITS = {
-    title: 100,
-    notes: 500,
-    clientName: 60,
-};
+const LIMITS = { title: 100, notes: 500, clientName: 60 };
 
 const SLOT_ICON = { lunch: "restaurant-outline", dinner: "moon-outline" };
 const STATUS_META = {
@@ -101,17 +98,13 @@ function StyledInput({ value, onChangeText, placeholder, multiline, keyboardType
     const isNearLimit = maxLength && currentLength >= maxLength * 0.85;
     const isAtLimit = maxLength && currentLength >= maxLength;
 
-    // ── Phone input ──
     if (isPhone) {
         return (
             <View style={{ marginBottom: isTablet ? cvw * 2 : cvw * 5 }}>
                 <View style={{
-                    backgroundColor: C.inputBg,
-                    borderWidth: 1,
+                    backgroundColor: C.inputBg, borderWidth: 1,
                     borderColor: focused ? C.gold : C.border,
-                    borderRadius: 12,
-                    flexDirection: "row",
-                    alignItems: "center",
+                    borderRadius: 12, flexDirection: "row", alignItems: "center",
                     paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 4,
                 }}>
                     <TextInput
@@ -124,8 +117,7 @@ function StyledInput({ value, onChangeText, placeholder, multiline, keyboardType
                         onBlur={() => setFocused(false)}
                         maxLength={10}
                         style={{
-                            flex: 1,
-                            color: C.white,
+                            flex: 1, color: C.white,
                             fontSize: isTablet ? cvw * 2.2 : cvw * 3.8,
                             paddingVertical: isTablet ? cvw * 1.2 : cvw * 3,
                         }}
@@ -133,19 +125,13 @@ function StyledInput({ value, onChangeText, placeholder, multiline, keyboardType
                     <Text style={{
                         color: currentLength === 10 ? C.gold : C.muted,
                         fontSize: isTablet ? cvw * 1.8 : cvw * 3,
-                        fontWeight: "600",
-                        marginLeft: 6,
+                        fontWeight: "600", marginLeft: 6,
                     }}>
                         {currentLength}/10
                     </Text>
                 </View>
                 {currentLength > 0 && currentLength < 10 && (
-                    <Text style={{
-                        color: C.red,
-                        fontSize: isTablet ? cvw * 1.6 : cvw * 2.8,
-                        marginTop: 4,
-                        marginLeft: 4,
-                    }}>
+                    <Text style={{ color: C.red, fontSize: isTablet ? cvw * 1.6 : cvw * 2.8, marginTop: 4, marginLeft: 4 }}>
                         Phone number must be 10 digits
                     </Text>
                 )}
@@ -153,7 +139,6 @@ function StyledInput({ value, onChangeText, placeholder, multiline, keyboardType
         );
     }
 
-    // ── Standard input ──
     return (
         <View style={{ marginBottom: isTablet ? cvw * 2 : cvw * 5 }}>
             <TextInput
@@ -168,8 +153,7 @@ function StyledInput({ value, onChangeText, placeholder, multiline, keyboardType
                 onBlur={() => setFocused(false)}
                 maxLength={maxLength}
                 style={{
-                    backgroundColor: C.inputBg,
-                    borderWidth: 1,
+                    backgroundColor: C.inputBg, borderWidth: 1,
                     borderColor: focused
                         ? isAtLimit ? C.red : C.gold
                         : isAtLimit ? "rgba(229,115,115,0.5)" : C.border,
@@ -182,14 +166,11 @@ function StyledInput({ value, onChangeText, placeholder, multiline, keyboardType
                     minHeight: multiline ? (isTablet ? cvw * 10 : cvw * 24) : undefined,
                 }}
             />
-            {/* Char counter — only when showCount is true */}
             {showCount && maxLength && (
                 <Text style={{
-                    color: isAtLimit ? C.red : isNearLimit ? "#F97316" : C.muted,
+                    color: isAtLimit ? C.red : isNearLimit ? C.orange : C.muted,
                     fontSize: isTablet ? cvw * 1.6 : cvw * 2.8,
-                    textAlign: "right",
-                    marginTop: 4,
-                    marginRight: 2,
+                    textAlign: "right", marginTop: 4, marginRight: 2,
                 }}>
                     {currentLength}/{maxLength}
                 </Text>
@@ -279,15 +260,41 @@ function ScreenHeader({ navigation, isEdit, dateLabel, cvw, isTablet }) {
 // ─── Form body ────────────────────────────────────────────────────────────────
 function FormBody({
     form, update, loading, isEdit, halls, bookedSlots,
-    handleSubmit, vw, cvw, isTablet,
+    bookedHallSlots, handleSubmit, vw, cvw, isTablet,
 }) {
+    /*
+     bookedHallSlots: Array of { hallName, eventSlot } objects where status === "booked"
+     Used to:
+       1. Disable a hall chip when that hall is fully booked for the selected slot
+       2. Disable a slot chip when ALL halls (or the selected hall) are booked for that slot
+       3. Show warning on in_talks entries in the event list (handled in calendar screen)
+    */
+
+    // Is a specific slot fully booked for the currently selected hall?
+    const isSlotBookedForHall = (slot) => {
+        if (!form.hallName) {
+            // No hall selected — slot is blocked only if booked across all halls
+            // (backend will catch it anyway; keep UX permissive here)
+            return false;
+        }
+        return bookedHallSlots.some(
+            (b) => b.hallName === form.hallName && b.eventSlot === slot
+        );
+    };
+
+    // Is a specific hall booked for the currently selected slot?
+    const isHallBookedForSlot = (hallName) => {
+        return bookedHallSlots.some(
+            (b) => b.hallName === hallName && b.eventSlot === form.eventSlot
+        );
+    };
+
+    const slotBookedForSelectedHall = isSlotBookedForHall(form.eventSlot);
+
     return (
         <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{
-                padding: isTablet ? vw * 3 : vw * 5,
-                paddingBottom: 48,
-            }}
+            contentContainerStyle={{ padding: isTablet ? vw * 3 : vw * 5, paddingBottom: 48 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
         >
@@ -303,8 +310,7 @@ function FormBody({
                 value={form.title}
                 onChangeText={(v) => update("title", v)}
                 placeholder="e.g. Singh Wedding Reception, Corporate Gala 2025"
-                maxLength={LIMITS.title}
-                showCount
+                maxLength={LIMITS.title} showCount
                 cvw={cvw} isTablet={isTablet}
             />
 
@@ -317,9 +323,7 @@ function FormBody({
                 value={form.notes}
                 onChangeText={(v) => update("notes", v)}
                 placeholder="e.g. Vegan menu required, floral arrangement on main stage, live band setup..."
-                multiline
-                maxLength={LIMITS.notes}
-                showCount
+                multiline maxLength={LIMITS.notes} showCount
                 cvw={cvw} isTablet={isTablet}
             />
 
@@ -329,70 +333,27 @@ function FormBody({
             {isTablet ? (
                 <View style={{ flexDirection: "row", gap: cvw * 3 }}>
                     <View style={{ flex: 1 }}>
-                        <FieldLabel
-                            icon="person-circle-outline" label="Client Name"
-                            hint="Full name of the booking contact"
-                            cvw={cvw} isTablet={isTablet}
-                        />
-                        <StyledInput
-                            value={form.clientName}
-                            onChangeText={(v) => update("clientName", v)}
-                            placeholder="e.g. Priya Sharma"
-                            maxLength={LIMITS.clientName}
-                            showCount
-                            cvw={cvw} isTablet={isTablet}
-                        />
+                        <FieldLabel icon="person-circle-outline" label="Client Name" hint="Full name of the booking contact" cvw={cvw} isTablet={isTablet} />
+                        <StyledInput value={form.clientName} onChangeText={(v) => update("clientName", v)} placeholder="e.g. Priya Sharma" maxLength={LIMITS.clientName} showCount cvw={cvw} isTablet={isTablet} />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <FieldLabel
-                            icon="call-outline" label="Contact Number"
-                            hint="Phone or WhatsApp number"
-                            cvw={cvw} isTablet={isTablet}
-                        />
-                        <StyledInput
-                            value={form.clientContact}
-                            onChangeText={(v) => update("clientContact", v)}
-                            placeholder="e.g. 9876543210"
-                            keyboardType="phone-pad"
-                            isPhone
-                            cvw={cvw} isTablet={isTablet}
-                        />
+                        <FieldLabel icon="call-outline" label="Contact Number" hint="Phone or WhatsApp number" cvw={cvw} isTablet={isTablet} />
+                        <StyledInput value={form.clientContact} onChangeText={(v) => update("clientContact", v)} placeholder="e.g. 9876543210" keyboardType="phone-pad" isPhone cvw={cvw} isTablet={isTablet} />
                     </View>
                 </View>
             ) : (
                 <>
-                    <FieldLabel
-                        icon="person-circle-outline" label="Client Name"
-                        hint="Full name of the booking contact"
-                        cvw={cvw} isTablet={isTablet}
-                    />
-                    <StyledInput
-                        value={form.clientName}
-                        onChangeText={(v) => update("clientName", v)}
-                        placeholder="e.g. Priya Sharma"
-                        maxLength={LIMITS.clientName}
-                        showCount
-                        cvw={cvw} isTablet={isTablet}
-                    />
-                    <FieldLabel
-                        icon="call-outline" label="Contact Number"
-                        hint="Phone or WhatsApp number"
-                        cvw={cvw} isTablet={isTablet}
-                    />
-                    <StyledInput
-                        value={form.clientContact}
-                        onChangeText={(v) => update("clientContact", v)}
-                        placeholder="e.g. 9876543210"
-                        keyboardType="phone-pad"
-                        isPhone
-                        cvw={cvw} isTablet={isTablet}
-                    />
+                    <FieldLabel icon="person-circle-outline" label="Client Name" hint="Full name of the booking contact" cvw={cvw} isTablet={isTablet} />
+                    <StyledInput value={form.clientName} onChangeText={(v) => update("clientName", v)} placeholder="e.g. Priya Sharma" maxLength={LIMITS.clientName} showCount cvw={cvw} isTablet={isTablet} />
+                    <FieldLabel icon="call-outline" label="Contact Number" hint="Phone or WhatsApp number" cvw={cvw} isTablet={isTablet} />
+                    <StyledInput value={form.clientContact} onChangeText={(v) => update("clientContact", v)} placeholder="e.g. 9876543210" keyboardType="phone-pad" isPhone cvw={cvw} isTablet={isTablet} />
                 </>
             )}
 
             {/* ── BOOKING OPTIONS ── */}
             <SectionHeader title="Booking Options" icon="options-outline" cvw={cvw} isTablet={isTablet} />
 
+            {/* ── SLOT PICKER ── */}
             <FieldLabel
                 icon="time-outline" label="Event Slot"
                 hint="Choose the meal slot for this booking"
@@ -400,12 +361,16 @@ function FormBody({
             />
             <View style={{ flexDirection: "row", gap: cvw * 3, marginBottom: isTablet ? cvw * 2 : cvw * 5 }}>
                 {["lunch", "dinner"].map((slot) => {
-                    const isBooked = bookedSlots.includes(slot) && form.eventSlot !== slot;
+                    // Disabled if: this slot is in bookedSlots (old logic — slot booked regardless of hall)
+                    // AND we are not currently editing that very slot
+                    const globallyBooked = bookedSlots.includes(slot) && (!isEdit || form.eventSlot !== slot);
                     const isActive = form.eventSlot === slot;
+                    const isDisabled = globallyBooked;
+
                     return (
                         <TouchableOpacity
                             key={slot}
-                            disabled={isBooked}
+                            disabled={isDisabled}
                             onPress={() => update("eventSlot", slot)}
                             activeOpacity={0.8}
                             style={{
@@ -416,7 +381,7 @@ function FormBody({
                                 backgroundColor: isActive ? C.gold : C.inputBg,
                                 borderWidth: 1,
                                 borderColor: isActive ? C.gold : C.border,
-                                opacity: isBooked ? 0.35 : 1,
+                                opacity: isDisabled ? 0.35 : 1,
                                 flexDirection: "row",
                                 justifyContent: "center",
                                 gap: 6,
@@ -436,7 +401,7 @@ function FormBody({
                                 }}>
                                     {slot}
                                 </Text>
-                                {isBooked && (
+                                {isDisabled && (
                                     <Text style={{ fontSize: isTablet ? cvw * 1.8 : cvw * 2.8, color: C.red, marginTop: 1 }}>
                                         Already booked
                                     </Text>
@@ -447,18 +412,39 @@ function FormBody({
                 })}
             </View>
 
+            {/* ── STATUS PICKER ── */}
             <FieldLabel
                 icon="flag-outline" label="Booking Status"
                 hint="Current stage of this booking"
                 cvw={cvw} isTablet={isTablet}
             />
+
+            {/* Warning when selected hall+slot is already booked — in_talks not allowed */}
+            {slotBookedForSelectedHall && !isEdit && (
+                <View style={{
+                    flexDirection: "row", alignItems: "flex-start", gap: 8,
+                    backgroundColor: "rgba(249,115,22,0.1)",
+                    borderWidth: 1, borderColor: "rgba(249,115,22,0.4)",
+                    borderRadius: 10, padding: 10, marginBottom: isTablet ? cvw * 1.5 : cvw * 3,
+                }}>
+                    <Ionicons name="warning-outline" size={isTablet ? cvw * 2.2 : 16} color={C.orange} style={{ marginTop: 1 }} />
+                    <Text style={{ color: C.orange, fontSize: isTablet ? cvw * 2 : cvw * 3.2, flex: 1, lineHeight: 18 }}>
+                        This slot is already confirmed for <Text style={{ fontWeight: "700" }}>{form.hallName}</Text>. Only In Talks entries are allowed — the slot cannot be booked again.
+                    </Text>
+                </View>
+            )}
+
             <View style={{ flexDirection: "row", gap: cvw * 3, marginBottom: isTablet ? cvw * 2 : cvw * 5 }}>
                 {["booked", "in_talks"].map((s) => {
                     const isActive = form.status === s;
                     const meta = STATUS_META[s];
+                    // Disable "booked" option if the selected hall+slot is already booked
+                    const isDisabled = s === "booked" && slotBookedForSelectedHall && !isEdit;
+
                     return (
                         <TouchableOpacity
                             key={s}
+                            disabled={isDisabled}
                             onPress={() => update("status", s)}
                             activeOpacity={0.8}
                             style={{
@@ -471,6 +457,7 @@ function FormBody({
                                     : C.inputBg,
                                 borderWidth: 1,
                                 borderColor: isActive ? meta.color : C.border,
+                                opacity: isDisabled ? 0.35 : 1,
                                 flexDirection: "row",
                                 justifyContent: "center",
                                 gap: 6,
@@ -481,19 +468,27 @@ function FormBody({
                                 size={isTablet ? cvw * 2.4 : cvw * 4.5}
                                 color={isActive ? meta.color : C.muted}
                             />
-                            <Text style={{
-                                color: isActive ? meta.color : C.muted,
-                                fontWeight: "700",
-                                fontSize: isTablet ? cvw * 2.4 : cvw * 3.8,
-                                textTransform: "capitalize",
-                            }}>
-                                {s.replace("_", " ")}
-                            </Text>
+                            <View style={{ alignItems: "center" }}>
+                                <Text style={{
+                                    color: isActive ? meta.color : C.muted,
+                                    fontWeight: "700",
+                                    fontSize: isTablet ? cvw * 2.4 : cvw * 3.8,
+                                    textTransform: "capitalize",
+                                }}>
+                                    {s.replace("_", " ")}
+                                </Text>
+                                {isDisabled && (
+                                    <Text style={{ fontSize: isTablet ? cvw * 1.8 : cvw * 2.8, color: C.red, marginTop: 1 }}>
+                                        Slot confirmed
+                                    </Text>
+                                )}
+                            </View>
                         </TouchableOpacity>
                     );
                 })}
             </View>
 
+            {/* ── HALL PICKER ── */}
             {halls.length > 0 && (
                 <>
                     <FieldLabel
@@ -507,6 +502,7 @@ function FormBody({
                         keyboardShouldPersistTaps="handled"
                         style={{ marginBottom: isTablet ? cvw * 2 : cvw * 5 }}
                     >
+                        {/* None chip */}
                         <TouchableOpacity
                             onPress={() => update("hallName", "")}
                             style={{
@@ -528,30 +524,48 @@ function FormBody({
                         </TouchableOpacity>
 
                         {halls.map((hall) => {
-                            const isActive = form.hallName === hall.name;
+                            const hallName = hall.name ?? hall;
+                            const isActive = form.hallName === hallName;
+                            const isHallBooked = isHallBookedForSlot(hallName);
+                            // Only disable if editing is not for this hall's existing event
+                            const isDisabled = isHallBooked && !isActive;
+
                             return (
                                 <TouchableOpacity
-                                    key={hall.id}
-                                    onPress={() => update("hallName", hall.name)}
+                                    key={hall.id ?? hallName}
+                                    disabled={isDisabled}
+                                    onPress={() => update("hallName", hallName)}
                                     style={{
                                         paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 5,
                                         paddingVertical: isTablet ? cvw * 1 : cvw * 2.5,
                                         borderRadius: 20, marginRight: 8,
                                         backgroundColor: isActive ? C.gold : C.inputBg,
-                                        borderWidth: 1, borderColor: isActive ? C.gold : C.border,
+                                        borderWidth: 1,
+                                        borderColor: isActive ? C.gold : isHallBooked ? "rgba(229,115,115,0.4)" : C.border,
+                                        opacity: isDisabled ? 0.4 : 1,
                                         flexDirection: "row", alignItems: "center", gap: 5,
                                     }}
                                 >
                                     {isActive && (
                                         <Ionicons name="checkmark" size={isTablet ? cvw * 2 : cvw * 3.5} color="#000" />
                                     )}
-                                    <Text style={{
-                                        color: isActive ? "#000" : C.muted,
-                                        fontWeight: isActive ? "700" : "500",
-                                        fontSize: isTablet ? cvw * 2.2 : cvw * 3.5,
-                                    }}>
-                                        {hall.name}
-                                    </Text>
+                                    {isHallBooked && !isActive && (
+                                        <Ionicons name="lock-closed-outline" size={isTablet ? cvw * 2 : cvw * 3.5} color={C.red} />
+                                    )}
+                                    <View>
+                                        <Text style={{
+                                            color: isActive ? "#000" : isHallBooked ? C.red : C.muted,
+                                            fontWeight: isActive ? "700" : "500",
+                                            fontSize: isTablet ? cvw * 2.2 : cvw * 3.5,
+                                        }}>
+                                            {hallName}
+                                        </Text>
+                                        {isHallBooked && !isActive && (
+                                            <Text style={{ fontSize: isTablet ? cvw * 1.6 : cvw * 2.6, color: C.red }}>
+                                                Booked
+                                            </Text>
+                                        )}
+                                    </View>
                                 </TouchableOpacity>
                             );
                         })}
@@ -610,45 +624,69 @@ export default function EventFormScreen() {
         locationId,
         halls = [],
         bookedSlots = [],
+        bookedHallSlots = [],   // [{ hallName, eventSlot }] where status === "booked"
+        preselectedHall = null,
     } = route.params;
 
     const isEdit = mode === "edit";
+
+    // Default slot: skip booked ones
+    const defaultSlot = (() => {
+        if (event?.eventSlot) return event.eventSlot;
+        if (!bookedSlots.includes("lunch")) return "lunch";
+        if (!bookedSlots.includes("dinner")) return "dinner";
+        return "lunch";
+    })();
+
+    // Default status: if preselectedHall+defaultSlot is booked → force in_talks
+    const defaultStatus = (() => {
+        if (event?.status) return event.status;
+        if (
+            preselectedHall &&
+            bookedHallSlots.some(
+                (b) => b.hallName === preselectedHall && b.eventSlot === defaultSlot
+            )
+        ) return "in_talks";
+        return "booked";
+    })();
 
     const [form, setForm] = useState({
         title: event?.title || "",
         clientName: event?.clientName || "",
         clientContact: event?.clientContact || "",
         notes: event?.notes || "",
-        eventSlot: event?.eventSlot || (bookedSlots.includes("lunch") ? "dinner" : "lunch"),
-        status: event?.status || "booked",
-        hallName: event?.hallName || "",
+        eventSlot: defaultSlot,
+        status: event?.status || defaultStatus,
+        hallName: event?.hallName || preselectedHall || "",
     });
 
     const [loading, setLoading] = useState(false);
-    const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+    const update = (key, value) => {
+        setForm((prev) => {
+            const next = { ...prev, [key]: value };
+
+            // When hall changes, auto-adjust status if the new hall+slot is already booked
+            if (key === "hallName" || key === "eventSlot") {
+                const targetHall = key === "hallName" ? value : prev.hallName;
+                const targetSlot = key === "eventSlot" ? value : prev.eventSlot;
+                const nowBooked = bookedHallSlots.some(
+                    (b) => b.hallName === targetHall && b.eventSlot === targetSlot
+                );
+                if (nowBooked && next.status === "booked") {
+                    next.status = "in_talks";
+                }
+            }
+
+            return next;
+        });
+    };
 
     const handleSubmit = async () => {
-        // ── Validation ──
-        if (!form.title.trim()) {
-            Alert.alert("Validation", "Event title is required.");
-            return;
-        }
-        if (form.title.trim().length < 3) {
-            Alert.alert("Validation", "Event title must be at least 3 characters.");
-            return;
-        }
-        if (!form.clientName.trim()) {
-            Alert.alert("Validation", "Client name is required.");
-            return;
-        }
-        if (form.clientName.trim().length < 2) {
-            Alert.alert("Validation", "Client name must be at least 2 characters.");
-            return;
-        }
-        if (form.clientContact && form.clientContact.length !== 10) {
-            Alert.alert("Validation", "Contact number must be exactly 10 digits.");
-            return;
-        }
+        if (!form.title.trim()) { Alert.alert("Validation", "Event title is required."); return; }
+        if (form.title.trim().length < 3) { Alert.alert("Validation", "Event title must be at least 3 characters."); return; }
+        if (!form.clientName.trim()) { Alert.alert("Validation", "Client name is required."); return; }
+        if (form.clientName.trim().length < 2) { Alert.alert("Validation", "Client name must be at least 2 characters."); return; }
+        if (form.clientContact && form.clientContact.length !== 10) { Alert.alert("Validation", "Contact number must be exactly 10 digits."); return; }
 
         try {
             setLoading(true);
@@ -679,30 +717,23 @@ export default function EventFormScreen() {
 
     const cardStyle = {
         backgroundColor: C.surface,
-        borderRadius: 24,
-        borderWidth: 1,
+        borderRadius: 24, borderWidth: 1,
         borderColor: C.borderGold,
-        flex: 1,
-        overflow: "hidden",
+        flex: 1, overflow: "hidden",
     };
 
     const formBodyProps = {
         form, update, loading, isEdit, halls, bookedSlots,
-        handleSubmit, vw, cvw, isTablet,
+        bookedHallSlots, handleSubmit, vw, cvw, isTablet,
     };
 
-    const headerProps = {
-        navigation, isEdit, dateLabel, cvw, isTablet,
-    };
+    const headerProps = { navigation, isEdit, dateLabel, cvw, isTablet };
 
     if (!isTablet) {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
                 <StatusBar barStyle="light-content" />
-                <KeyboardAvoidingView
-                    style={{ flex: 1 }}
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                >
+                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
                     <View style={{ flex: 1, margin: vw * 4, marginBottom: vw * 4 }}>
                         <View style={cardStyle}>
                             <ScreenHeader {...headerProps} />
@@ -717,10 +748,7 @@ export default function EventFormScreen() {
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
             <StatusBar barStyle="light-content" />
-            <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-            >
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
                 <View style={{ flex: 1, marginHorizontal: vw * 8, marginVertical: vh * 3 }}>
                     <View style={cardStyle}>
                         <ScreenHeader {...headerProps} />

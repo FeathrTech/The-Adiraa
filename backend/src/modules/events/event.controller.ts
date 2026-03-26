@@ -57,12 +57,16 @@ export class EventsController {
   ===============================
   GET EVENTS BY DATE
   ===============================
+  Optional ?hallName=Ground+Floor filters to a specific hall.
+  Without it, returns all halls' events for that date+location.
+  ===============================
   */
 
   @Get('by-date')
   async findByDate(
     @Query('date') date: string,
     @Query('locationId') locationId: string,
+    @Query('hallName') hallName: string,
     @Req() req: AuthRequest,
   ) {
     if (!date) {
@@ -75,12 +79,15 @@ export class EventsController {
 
     const tenantId = req.user.tenantId;
 
-    return this.eventsService.findByDate(date, tenantId, locationId);
+    return this.eventsService.findByDate(date, tenantId, locationId, hallName);
   }
 
   /*
   ===============================
   CALENDAR SUMMARY
+  ===============================
+  Optional ?hallName=Ground+Floor filters dots to a specific hall.
+  Without it, dot reflects worst-case status across all halls.
   ===============================
   */
 
@@ -89,9 +96,9 @@ export class EventsController {
     @Query('siteId') siteId: string,
     @Query('year') year: string,
     @Query('month') month: string,
+    @Query('hallName') hallName: string,
     @Req() req: AuthRequest,
   ) {
-
     if (!siteId) {
       throw new BadRequestException('siteId required');
     }
@@ -107,6 +114,7 @@ export class EventsController {
       siteId,
       Number(year),
       Number(month),
+      hallName,
     );
   }
 

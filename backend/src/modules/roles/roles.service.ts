@@ -238,4 +238,47 @@ export class RolesService {
     return role;
   }
 
+  async updateRole(
+    roleId: string,
+    data: { name?: string; permissionIds?: string[] },
+    currentUser: User,
+  ) {
+    const role = await this.roleRepo.findOne({
+      where: {
+        id: roleId,
+        tenant: { id: currentUser.tenant.id },
+      },
+      relations: ['permissions'],
+    });
+
+    if (!role) throw new NotFoundException('Role not found');
+
+    // ✅ UPDATE NAME
+    if (data.name !== undefined) {
+      const existing = await this.roleRepo.findOne({
+        where: {
+          name: data.name,
+          tenant: { id: currentUser.tenant.id },
+        },
+      });
+
+      if (existing && existing.id !== roleId) {
+        throw new ForbiddenException('Role already exists');
+      }
+
+      role.name = data.name;
+    }
+
+    // ✅ UPDATE PERMISSIONS
+    if (data.permissionIds) {
+      const permissions = await this.permissionRepo.find({
+        where: { id: In(data.permissionIds) },
+      });
+
+      role.permissions = permissions;
+    }
+
+    return this.roleRepo.save(role);
+  }
+
 }

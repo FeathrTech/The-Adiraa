@@ -41,7 +41,7 @@ export class AuthService {
   async login(username: string, password: string) {
     const user = await this.userRepo.findOne({
       where: { username },
-      relations: ['roles', 'roles.permissions', 'tenant', 'location'],
+      relations: ['roles', 'roles.permissions', 'tenant', 'locations'],
     });
 
     if (!user) {

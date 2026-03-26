@@ -43,9 +43,9 @@ const C = {
 // ─── Limits ───────────────────────────────────────────────────────────────────
 const LIMITS = {
   name: { min: 2, max: 60 },
-  email: { max: 254 },       // RFC 5321
+  email: { max: 254 },
   password: { min: 8, max: 128 },
-  shift: { max: 5 },         // HH:MM
+  shift: { max: 5 },
 };
 
 // ─── Responsive hook ──────────────────────────────────────────────────────────
@@ -108,7 +108,6 @@ function StyledInput({
 
   const phoneCount = isPhone ? currentLength : 0;
 
-  // ── Phone variant ──
   if (isPhone) {
     return (
       <View style={{ marginBottom: isTablet ? cvw * 1.8 : cvw * 4 }}>
@@ -155,7 +154,6 @@ function StyledInput({
     );
   }
 
-  // ── Standard variant ──
   const counterColor = isAtLimit ? C.red : isNearLimit ? C.orange : C.muted;
 
   return (
@@ -288,6 +286,85 @@ function UploadButton({ icon, label, hint, selected, onPress, preview, cvw, isTa
   );
 }
 
+// ─── Toggle row ───────────────────────────────────────────────────────────────
+function ToggleRow({ icon, label, description, value, onToggle, cvw, isTablet }) {
+  return (
+    <TouchableOpacity
+      onPress={onToggle}
+      activeOpacity={0.8}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: value ? "rgba(201,162,39,0.06)" : C.inputBg,
+        borderWidth: 1,
+        borderColor: value ? C.borderGold : C.border,
+        borderRadius: 14,
+        paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 4,
+        paddingVertical: isTablet ? cvw * 1.4 : cvw * 3.2,
+        marginBottom: isTablet ? cvw * 1.5 : cvw * 3,
+      }}
+    >
+      {/* Left: icon + text */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, marginRight: 12 }}>
+        <View style={{
+          width: isTablet ? cvw * 5 : cvw * 9,
+          height: isTablet ? cvw * 5 : cvw * 9,
+          borderRadius: cvw * 5,
+          backgroundColor: value ? "rgba(201,162,39,0.12)" : C.faint,
+          borderWidth: 1,
+          borderColor: value ? C.borderGold : C.border,
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <Ionicons
+            name={icon}
+            size={isTablet ? cvw * 2.2 : cvw * 4.5}
+            color={value ? C.gold : C.muted}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{
+            color: value ? C.white : C.muted,
+            fontWeight: value ? "700" : "500",
+            fontSize: isTablet ? cvw * 2.2 : cvw * 3.8,
+            marginBottom: 2,
+          }}>
+            {label}
+          </Text>
+          <Text style={{
+            color: C.muted,
+            fontSize: isTablet ? cvw * 1.7 : cvw * 2.8,
+            lineHeight: isTablet ? cvw * 2.6 : cvw * 4.2,
+          }}>
+            {description}
+          </Text>
+        </View>
+      </View>
+
+      {/* Right: toggle pill */}
+      <View style={{
+        width: isTablet ? cvw * 8 : cvw * 14,
+        height: isTablet ? cvw * 4 : cvw * 7.5,
+        borderRadius: 100,
+        backgroundColor: value ? C.gold : C.faint,
+        justifyContent: "center",
+        paddingHorizontal: isTablet ? cvw * 0.4 : cvw * 0.8,
+        flexShrink: 0,
+      }}>
+        <View style={{
+          width: isTablet ? cvw * 3 : cvw * 6,
+          height: isTablet ? cvw * 3 : cvw * 6,
+          borderRadius: 100,
+          backgroundColor: C.white,
+          alignSelf: value ? "flex-end" : "flex-start",
+        }} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Screen header ────────────────────────────────────────────────────────────
 function ScreenHeader({ navigation, cvw, vw, vh, isTablet }) {
   return (
@@ -331,6 +408,13 @@ function ScreenHeader({ navigation, cvw, vw, vh, isTablet }) {
 const isValidTime = (t) => !t || /^([01]\d|2[0-3]):([0-5]\d)$/.test(t);
 const isValidEmail = (e) => !e || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
+const formatShiftTime = (text) => {
+  const digits = text.replace(/[^0-9]/g, "");
+  if (digits.length === 0) return "";
+  if (digits.length <= 2) return digits;
+  return digits.slice(0, 2) + ":" + digits.slice(2, 4);
+};
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CreateStaffScreen() {
   const navigation = useNavigation();
@@ -346,20 +430,26 @@ export default function CreateStaffScreen() {
   const [roles, setRoles] = useState([]);
   const [sites, setSites] = useState([]);
   const [selectedRole, setSelectedRole] = useState(null);
-  const [selectedSite, setSelectedSite] = useState(null);
+  const [selectedSites, setSelectedSites] = useState([]);
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [idProof, setIdProof] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // ── All hooks must be before any conditional return ──
+  // ── Self-upload toggles ───────────────────────────────────────────────────
+  const [allowSelfPhotoUpload, setAllowSelfPhotoUpload] = useState(false);
+  const [allowSelfIdUpload, setAllowSelfIdUpload] = useState(false);
+
   useEffect(() => { load(); }, []);
 
   const load = async () => {
     try {
       const roleData = await fetchRoles();
       const siteData = await fetchSites();
-      setRoles(Array.isArray(roleData) ? roleData : []);
+      const filteredRoles = Array.isArray(roleData)
+        ? roleData.filter((r) => r.name.toLowerCase() !== "owner")
+        : [];
+      setRoles(filteredRoles);
       setSites(Array.isArray(siteData) ? siteData : []);
     } catch {
       Alert.alert("Error", "Failed to load roles/locations");
@@ -370,15 +460,62 @@ export default function CreateStaffScreen() {
 
   if (!can(userPermissions, ACTION_PERMISSIONS.staff.create)) return null;
 
+  // ─── Photo pickers ────────────────────────────────────────────────────────
   const pickProfilePhoto = async () => {
-    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6 });
-    if (!result.canceled) setProfilePhoto(result.assets[0]);
+    Alert.alert("Profile Photo", "Choose option", [
+      {
+        text: "Camera",
+        onPress: async () => {
+          const r = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.6,
+          });
+          if (!r.canceled) setProfilePhoto(r.assets[0]);
+        },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          const r = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.6,
+          });
+          if (!r.canceled) setProfilePhoto(r.assets[0]);
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const toggleSite = (id) => {
+    setSelectedSites((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
   };
 
   const pickIdProof = async () => {
     Alert.alert("Upload ID Proof", "Choose option", [
-      { text: "Camera", onPress: async () => { const r = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images }); if (!r.canceled) setIdProof(r.assets[0]); } },
-      { text: "Document", onPress: async () => { const r = await DocumentPicker.getDocumentAsync({ type: ["image/*", "application/pdf"] }); if (!r.canceled) setIdProof(r.assets[0]); } },
+      {
+        text: "Camera",
+        onPress: async () => {
+          const r = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images });
+          if (!r.canceled) setIdProof(r.assets[0]);
+        },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images });
+          if (!r.canceled) setIdProof(r.assets[0]);
+        },
+      },
+      {
+        text: "Document",
+        onPress: async () => {
+          const r = await DocumentPicker.getDocumentAsync({ type: ["image/*", "application/pdf"] });
+          if (!r.canceled) setIdProof(r.assets[0]);
+        },
+      },
       { text: "Cancel", style: "cancel" },
     ]);
   };
@@ -393,6 +530,8 @@ export default function CreateStaffScreen() {
     if (password.length < LIMITS.password.min) return `Password must be at least ${LIMITS.password.min} characters`;
     if (shiftStart && !isValidTime(shiftStart)) return "Shift start must be in HH:MM format (e.g. 09:00)";
     if (shiftEnd && !isValidTime(shiftEnd)) return "Shift end must be in HH:MM format (e.g. 18:00)";
+    const chosenRole = roles.find((r) => r.id === selectedRole);
+    if (chosenRole?.name?.toLowerCase() === "owner") return "Owner role cannot be assigned to staff.";
     if (!selectedRole) return "Please select a role";
     return null;
   };
@@ -409,12 +548,31 @@ export default function CreateStaffScreen() {
       formData.append("shiftStartTime", shiftStart);
       formData.append("shiftEndTime", shiftEnd);
       formData.append("roleIds", JSON.stringify([selectedRole]));
-      if (email) formData.append("email", email.trim());
-      if (selectedSite) formData.append("locationId", selectedSite);
+      formData.append("email", email?.trim() ?? "");
+
+      // ── Self-upload flags ──────────────────────────────────────────────────
+      formData.append("allowSelfPhotoUpload", String(allowSelfPhotoUpload));
+      formData.append("allowSelfIdUpload", String(allowSelfIdUpload));
+
+      if (selectedSites.length > 0) formData.append("locationIds", JSON.stringify(selectedSites));
       if (profilePhoto) formData.append("profilePhoto", { uri: profilePhoto.uri, name: "profile.jpg", type: "image/jpeg" });
       if (idProof) formData.append("idProof", { uri: idProof.uri, name: idProof.name || "document.pdf", type: idProof.mimeType || "application/pdf" });
+
       const createdUser = await createUser(formData);
-      Alert.alert("Staff Created 🎉", `Username generated:\n\n${createdUser.username}\n\nPlease share this with the staff member.`, [{ text: "OK", onPress: () => navigation.goBack() }]);
+      Alert.alert(
+        "Staff Created",
+        `Username generated:\n\n${createdUser.username}\n\nPlease share this with the staff member.`,
+        [
+          {
+            text: "OK",
+            onPress: () =>
+              navigation.replace("StaffDetail", {
+                user: createdUser,
+                _refresh: true,
+              }),
+          },
+        ]
+      );
     } catch (error) {
       Alert.alert("Error", error.response?.data?.message || "Failed to create staff");
     } finally {
@@ -508,7 +666,8 @@ export default function CreateStaffScreen() {
               <View style={{ flex: 1 }}>
                 <FieldLabel icon="sunny-outline" label="Start Time" hint="24-hr format (HH:MM)" optional cvw={cvw} isTablet={isTablet} />
                 <StyledInput
-                  value={shiftStart} onChangeText={setShiftStart}
+                  value={shiftStart}
+                  onChangeText={(t) => setShiftStart(formatShiftTime(t))}
                   placeholder="09:00"
                   keyboardType="numeric"
                   maxLength={LIMITS.shift.max}
@@ -518,7 +677,8 @@ export default function CreateStaffScreen() {
               <View style={{ flex: 1 }}>
                 <FieldLabel icon="moon-outline" label="End Time" hint="24-hr format (HH:MM)" optional cvw={cvw} isTablet={isTablet} />
                 <StyledInput
-                  value={shiftEnd} onChangeText={setShiftEnd}
+                  value={shiftEnd}
+                  onChangeText={(t) => setShiftEnd(formatShiftTime(t))}
                   placeholder="18:00"
                   keyboardType="numeric"
                   maxLength={LIMITS.shift.max}
@@ -553,19 +713,19 @@ export default function CreateStaffScreen() {
               <>
                 <SectionHeader title="Assign Location" icon="location-outline" cvw={cvw} isTablet={isTablet} />
                 <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3, marginBottom: isTablet ? cvw * 1.5 : cvw * 3 }}>
-                  The site this staff member will be assigned to for attendance tracking
+                  Select one or more sites for attendance tracking
                 </Text>
                 {isTablet ? (
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: cvw * 1.5, marginBottom: cvw * 2 }}>
                     {sites.map((site) => (
                       <View key={site.id} style={{ minWidth: "30%" }}>
-                        <SelectorChip label={site.name} selected={selectedSite === site.id} onPress={() => setSelectedSite(site.id === selectedSite ? null : site.id)} cvw={cvw} isTablet={isTablet} />
+                        <SelectorChip label={site.name} selected={selectedSites.includes(site.id)} onPress={() => toggleSite(site.id)} cvw={cvw} isTablet={isTablet} />
                       </View>
                     ))}
                   </View>
                 ) : (
                   sites.map((site) => (
-                    <SelectorChip key={site.id} label={site.name} selected={selectedSite === site.id} onPress={() => setSelectedSite(site.id === selectedSite ? null : site.id)} cvw={cvw} isTablet={isTablet} />
+                    <SelectorChip key={site.id} label={site.name} selected={selectedSites.includes(site.id)} onPress={() => toggleSite(site.id)} cvw={cvw} isTablet={isTablet} />
                   ))
                 )}
               </>
@@ -580,7 +740,7 @@ export default function CreateStaffScreen() {
             <UploadButton
               icon="camera-outline"
               label={profilePhoto ? "Profile Photo Selected" : "Upload Profile Photo"}
-              hint={profilePhoto ? profilePhoto.uri?.split("/").pop() : "Take a clear front-facing photo — JPEG, max 5 MB"}
+              hint={profilePhoto ? profilePhoto.uri?.split("/").pop() : "Camera or gallery — JPEG, max 5 MB"}
               selected={!!profilePhoto}
               onPress={pickProfilePhoto}
               preview={profilePhoto?.uri}
@@ -589,12 +749,75 @@ export default function CreateStaffScreen() {
             <UploadButton
               icon="id-card-outline"
               label={idProof ? "ID Proof Selected" : "Upload ID Proof"}
-              hint={idProof ? (idProof.name || idProof.uri?.split("/").pop()) : "Aadhaar, PAN, Passport — image or PDF, max 10 MB"}
+              hint={idProof ? (idProof.name || idProof.uri?.split("/").pop()) : "Camera, gallery or document — image or PDF, max 10 MB"}
               selected={!!idProof}
               onPress={pickIdProof}
               preview={idProof?.uri && !idProof.name?.endsWith(".pdf") ? idProof.uri : null}
               cvw={cvw} isTablet={isTablet}
             />
+
+            {/* ── SELF-UPLOAD PERMISSIONS ── */}
+            <View style={{
+              height: 1,
+              backgroundColor: C.border,
+              marginTop: isTablet ? cvw * 1 : cvw * 2,
+              marginBottom: isTablet ? cvw * 2 : cvw * 4,
+            }} />
+
+            <SectionHeader title="Self Upload" icon="cloud-upload-outline" cvw={cvw} isTablet={isTablet} />
+            <Text style={{
+              color: C.muted,
+              fontSize: isTablet ? cvw * 1.8 : cvw * 3,
+              marginBottom: isTablet ? cvw * 1.5 : cvw * 3,
+              lineHeight: isTablet ? cvw * 2.8 : cvw * 4.5,
+            }}>
+              Allow this staff member to upload their own documents from the app
+            </Text>
+
+            {/* Tablet: side-by-side toggles */}
+            {isTablet ? (
+              <View style={{ flexDirection: "row", gap: cvw * 2 }}>
+                <View style={{ flex: 1 }}>
+                  <ToggleRow
+                    icon="camera-outline"
+                    label="Profile Photo Upload"
+                    description="Staff can update their own profile photo"
+                    value={allowSelfPhotoUpload}
+                    onToggle={() => setAllowSelfPhotoUpload((p) => !p)}
+                    cvw={cvw} isTablet={isTablet}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <ToggleRow
+                    icon="id-card-outline"
+                    label="ID Proof Upload"
+                    description="Staff can upload their own ID proof document"
+                    value={allowSelfIdUpload}
+                    onToggle={() => setAllowSelfIdUpload((p) => !p)}
+                    cvw={cvw} isTablet={isTablet}
+                  />
+                </View>
+              </View>
+            ) : (
+              <>
+                <ToggleRow
+                  icon="camera-outline"
+                  label="Profile Photo Upload"
+                  description="Staff can update their own profile photo"
+                  value={allowSelfPhotoUpload}
+                  onToggle={() => setAllowSelfPhotoUpload((p) => !p)}
+                  cvw={cvw} isTablet={isTablet}
+                />
+                <ToggleRow
+                  icon="id-card-outline"
+                  label="ID Proof Upload"
+                  description="Staff can upload their own ID proof document"
+                  value={allowSelfIdUpload}
+                  onToggle={() => setAllowSelfIdUpload((p) => !p)}
+                  cvw={cvw} isTablet={isTablet}
+                />
+              </>
+            )}
 
             <View style={{ height: 1, backgroundColor: C.border, marginVertical: isTablet ? cvw * 2 : cvw * 5 }} />
 

@@ -63,6 +63,12 @@ export class User {
   @Column({ nullable: true, type: 'varchar' })
   pushToken: string | null;
 
+  @Column({ default: false })
+  allowSelfPhotoUpload: boolean;
+
+  @Column({ default: false })
+  allowSelfIdUpload: boolean;
+
   /*
   ============================================
   RELATIONS
@@ -74,11 +80,9 @@ export class User {
   })
   tenant: Tenant;
 
-  @ManyToOne(() => Location, (location) => location.users, {
-    onDelete: 'SET NULL',
-    nullable: true,
-  })
-  location: Location | null;
+  @ManyToMany(() => Location, { eager: false })
+  @JoinTable({ name: 'user_locations' })
+  locations: Location[];
 
   @ManyToMany(() => Role, (role) => role.users, { eager: true })
   @JoinTable({ name: 'user_roles' })

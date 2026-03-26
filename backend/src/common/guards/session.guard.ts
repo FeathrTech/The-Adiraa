@@ -45,7 +45,7 @@ export class SessionGuard implements CanActivate {
         'user.roles',
         'user.roles.permissions',
         'user.tenant',
-        'user.location',
+        'user.locations',
       ],
     });
 
@@ -77,10 +77,10 @@ export class SessionGuard implements CanActivate {
     request.user = {
       ...session.user,
       tenantId: session.user.tenant?.id,   // ← now accessible as req.user.tenantId
-      locationId: session.user.location?.id,
+      locationId: session.user.locations?.[0]?.id,
     };
     request.tenantId = session.user.tenant?.id;   // keep for backward compat
-    request.locationId = session.user.location?.id;
+    request.locationId = session.user.locations?.[0]?.id;
 
     return true;
   }

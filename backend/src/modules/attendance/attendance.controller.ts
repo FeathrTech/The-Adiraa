@@ -28,7 +28,6 @@ export class AttendanceController {
 
   /* ================= STAFF: TODAY STATUS ================= */
 
-
   @Get('today')
   @RequirePermission('attendance.checkin', 'attendance.checkout', 'attendance.view.own')
   getToday(@CurrentUser() user: User) {
@@ -45,7 +44,6 @@ export class AttendanceController {
     @Body() body: any,
     @CurrentUser() user: User,
   ) {
-
     console.log("FILE:", file);
     console.log("BODY:", body);
 
@@ -56,6 +54,7 @@ export class AttendanceController {
       user,
     );
   }
+
   @Get('my-history')
   @RequirePermission('attendance.view.own')
   getMyHistory(
@@ -64,6 +63,7 @@ export class AttendanceController {
   ) {
     return this.service.getMyHistory(month, user);
   }
+
   /* ================= STAFF CHECKOUT ================= */
 
   @Post('checkout')
@@ -145,15 +145,16 @@ export class AttendanceController {
     return this.service.markAbsent(body, user);
   }
 
+  /* ================= STAFF ANALYTICS ================= */
+
+  // ✅ Added ?month=YYYY-MM query param — defaults to current month if omitted
   @Get("analytics/:userId")
   getUserAttendanceAnalytics(
     @Param("userId") userId: string,
+    @Query("month") month: string,
     @Req() req,
   ) {
-    return this.service.getUserAttendanceAnalytics(
-      userId,
-      req.user,
-    );
+    return this.service.getUserAttendanceAnalytics(userId, req.user, month);
   }
 
 }

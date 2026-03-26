@@ -72,7 +72,7 @@ export class LocationService extends TenantAwareService<Location> {
       },
       relations: [
         'halls',  
-        'users',
+        // 'users',
       ],
     });
 

@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { Attendance } from './attendance.entity';
 import { AttendanceService } from './attendance.service';
 import { AttendanceController } from './attendance.controller';
+import { AttendanceCronService } from './attendance-cron.service';
 
 import { AttendanceConfig } from './attendance-config.entity';
 import { AttendanceConfigService } from './attendance-config.service';
@@ -16,28 +18,27 @@ import { RealtimeModule } from '../../common/realtime/realtime.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     TypeOrmModule.forFeature([
       Attendance,
       User,
       Role,
       AttendanceConfig,
     ]),
-    RealtimeModule,   // ⭐ ADD THIS
+    RealtimeModule,
   ],
-
   controllers: [
     AttendanceController,
     AttendanceConfigController,
   ],
-
   providers: [
     AttendanceService,
     AttendanceConfigService,
+    AttendanceCronService,
   ],
-
   exports: [
     AttendanceService,
     AttendanceConfigService,
   ],
 })
-export class AttendanceModule {}
+export class AttendanceModule { }

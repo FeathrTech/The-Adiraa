@@ -8,13 +8,14 @@ import {
   RefreshControl,
   useWindowDimensions,
   StatusBar,
+  Alert,
 } from "react-native";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { fetchUsers } from "../../api/userApi";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { useRealtime } from "../../hooks/useRealtime";
 import { useAuthStore } from "../../store/authStore";
 
@@ -32,6 +33,12 @@ const C = {
   white: "#FFFFFF",
   muted: "#777",
   faint: "#333",
+  green: "#5DBE8A",
+  greenBg: "rgba(93,190,138,0.12)",
+  greenBorder: "rgba(93,190,138,0.4)",
+  red: "#E57373",
+  redBg: "rgba(229,115,115,0.1)",
+  redBorder: "rgba(229,115,115,0.35)",
 };
 
 // ─── Responsive hook ──────────────────────────────────────────────────────────
@@ -45,20 +52,87 @@ function useResponsive() {
   return { width, height, vw, vh, cvw, isTablet };
 }
 
+// ─── Filter Tabs ──────────────────────────────────────────────────────────────
+function FilterTabs({ filter, setFilter, users, cvw, isTablet }) {
+  const tabs = [
+    { key: "all", label: "All", count: users.length },
+    { key: "active", label: "Active", count: users.filter((u) => u.isActive).length },
+    { key: "inactive", label: "Inactive", count: users.filter((u) => !u.isActive).length },
+  ];
+
+  return (
+    <View style={{
+      flexDirection: "row",
+      gap: isTablet ? cvw * 1.5 : cvw * 2.5,
+      marginBottom: isTablet ? 12 : 14,
+    }}>
+      {tabs.map((tab) => {
+        const isSelected = filter === tab.key;
+        return (
+          <TouchableOpacity
+            key={tab.key}
+            onPress={() => setFilter(tab.key)}
+            activeOpacity={0.75}
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: isTablet ? cvw * 0.8 : cvw * 1.5,
+              paddingVertical: isTablet ? 8 : 10,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: isSelected ? C.gold : C.border,
+              backgroundColor: isSelected ? "rgba(201,162,39,0.1)" : C.inputBg,
+            }}
+          >
+            <Text style={{
+              color: isSelected ? C.gold : C.muted,
+              fontWeight: isSelected ? "700" : "500",
+              fontSize: isTablet ? cvw * 1.9 : cvw * 3.2,
+            }}>
+              {tab.label}
+            </Text>
+            <View style={{
+              backgroundColor: isSelected ? "rgba(201,162,39,0.2)" : C.faint,
+              borderRadius: 6,
+              paddingHorizontal: isTablet ? cvw * 0.8 : cvw * 1.8,
+              paddingVertical: 2,
+            }}>
+              <Text style={{
+                color: isSelected ? C.gold : C.muted,
+                fontWeight: "700",
+                fontSize: isTablet ? cvw * 1.6 : cvw * 2.8,
+              }}>
+                {tab.count}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── Staff card — defined OUTSIDE ────────────────────────────────────────────
 function StaffCard({ item, onPress, cvw, isTablet }) {
   const roleLabel = item.roles?.map((r) => r.name).join(", ") || "No Role";
   const isActive = item.isActive;
+
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
       style={{
         backgroundColor: C.card,
-        borderRadius: 16, borderWidth: 1, borderColor: C.borderGold,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: C.borderGold,
         padding: isTablet ? cvw * 2.5 : cvw * 5,
         marginBottom: 16,
-        flexDirection: "row", alignItems: "center", gap: cvw * 3,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: cvw * 3,
       }}
     >
       <View style={{
@@ -66,35 +140,50 @@ function StaffCard({ item, onPress, cvw, isTablet }) {
         height: isTablet ? cvw * 6 : cvw * 11,
         borderRadius: cvw * 6,
         backgroundColor: "rgba(201,162,39,0.12)",
-        borderWidth: 1, borderColor: C.borderGold,
-        alignItems: "center", justifyContent: "center", flexShrink: 0,
+        borderWidth: 1,
+        borderColor: C.borderGold,
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
       }}>
         <Text style={{ color: C.gold, fontWeight: "800", fontSize: isTablet ? cvw * 2.8 : cvw * 4.5 }}>
           {item.name?.charAt(0)?.toUpperCase() || "?"}
         </Text>
       </View>
+
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={{ color: C.white, fontWeight: "700", fontSize: isTablet ? cvw * 2.6 : cvw * 4.2, marginBottom: 3 }}>
           {item.name}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 }}>
           <Ionicons name="call-outline" size={isTablet ? cvw * 1.8 : cvw * 3} color={C.muted} />
-          <Text numberOfLines={1} style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>{item.mobile || "—"}</Text>
+          <Text numberOfLines={1} style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
+            {item.mobile || "—"}
+          </Text>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
           <Ionicons name="shield-outline" size={isTablet ? cvw * 1.8 : cvw * 3} color={C.muted} />
-          <Text numberOfLines={1} style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2, flex: 1 }}>{roleLabel}</Text>
+          <Text numberOfLines={1} style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2, flex: 1 }}>
+            {roleLabel}
+          </Text>
         </View>
       </View>
+
       <View style={{ alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
         <View style={{
-          backgroundColor: isActive ? "rgba(93,190,138,0.12)" : "rgba(229,115,115,0.1)",
-          borderWidth: 1, borderColor: isActive ? "rgba(93,190,138,0.4)" : "rgba(229,115,115,0.35)",
+          backgroundColor: isActive ? C.greenBg : C.redBg,
+          borderWidth: 1,
+          borderColor: isActive ? C.greenBorder : C.redBorder,
           borderRadius: 8,
           paddingHorizontal: isTablet ? cvw * 1.5 : cvw * 2.5,
           paddingVertical: 4,
         }}>
-          <Text style={{ color: isActive ? "#5DBE8A" : "#E57373", fontWeight: "700", fontSize: isTablet ? cvw * 1.8 : cvw * 2.8, letterSpacing: 0.5 }}>
+          <Text style={{
+            color: isActive ? C.green : C.red,
+            fontWeight: "700",
+            fontSize: isTablet ? cvw * 1.8 : cvw * 2.8,
+            letterSpacing: 0.5,
+          }}>
             {isActive ? "ACTIVE" : "INACTIVE"}
           </Text>
         </View>
@@ -105,23 +194,39 @@ function StaffCard({ item, onPress, cvw, isTablet }) {
 }
 
 // ─── Empty state — defined OUTSIDE ───────────────────────────────────────────
-function EmptyState({ search, cvw, isTablet }) {
+function EmptyState({ search, filter, cvw, isTablet }) {
+  const isFiltered = filter !== "all";
+  const label = search.trim()
+    ? "No Results Found"
+    : isFiltered
+      ? `No ${filter === "active" ? "Active" : "Inactive"} Staff`
+      : "No Staff Found";
+  const sub = search.trim()
+    ? `No staff matching "${search}"`
+    : isFiltered
+      ? `No staff members are currently ${filter}`
+      : "Add staff members to get started";
+
   return (
     <View style={{ alignItems: "center", paddingTop: 64 }}>
       <View style={{
         width: isTablet ? cvw * 14 : cvw * 22,
         height: isTablet ? cvw * 14 : cvw * 22,
         borderRadius: cvw * 11,
-        backgroundColor: C.faint, borderWidth: 1, borderColor: C.border,
-        alignItems: "center", justifyContent: "center", marginBottom: 16,
+        backgroundColor: C.faint,
+        borderWidth: 1,
+        borderColor: C.border,
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 16,
       }}>
         <Ionicons name="people-outline" size={isTablet ? cvw * 7 : cvw * 10} color={C.muted} />
       </View>
       <Text style={{ color: C.white, fontWeight: "700", fontSize: isTablet ? cvw * 3 : cvw * 4.5, marginBottom: 6 }}>
-        {search.trim() ? "No Results Found" : "No Staff Found"}
+        {label}
       </Text>
       <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2.2 : cvw * 3.5, textAlign: "center" }}>
-        {search.trim() ? `No staff matching "${search}"` : "Add staff members to get started"}
+        {sub}
       </Text>
     </View>
   );
@@ -131,10 +236,12 @@ function EmptyState({ search, cvw, isTablet }) {
 function ScreenHeader({ navigation, canCreate, cvw, vh, isTablet }) {
   return (
     <View style={{
-      flexDirection: "row", alignItems: "center",
+      flexDirection: "row",
+      alignItems: "center",
       marginBottom: isTablet ? 16 : 20,
       paddingBottom: isTablet ? 12 : 16,
-      borderBottomWidth: 1, borderBottomColor: C.border,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
     }}>
       <TouchableOpacity
         onPress={() => navigation.goBack()}
@@ -147,13 +254,21 @@ function ScreenHeader({ navigation, canCreate, cvw, vh, isTablet }) {
         }}
       >
         <Ionicons name="arrow-back" size={isTablet ? cvw * 2.2 : 18} color={C.gold} />
-        {isTablet && <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>Back</Text>}
+        {isTablet && (
+          <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>Back</Text>
+        )}
       </TouchableOpacity>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8, letterSpacing: 3, fontWeight: "700", textTransform: "uppercase", marginBottom: 2 }}>
+        <Text style={{
+          color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8,
+          letterSpacing: 3, fontWeight: "700", textTransform: "uppercase", marginBottom: 2,
+        }}>
           Admin
         </Text>
-        <Text style={{ color: C.white, fontSize: isTablet ? cvw * 3.5 : cvw * 5.5, fontWeight: "800", letterSpacing: -0.3 }}>
+        <Text style={{
+          color: C.white, fontSize: isTablet ? cvw * 3.5 : cvw * 5.5,
+          fontWeight: "800", letterSpacing: -0.3,
+        }}>
           Staff
         </Text>
       </View>
@@ -170,7 +285,9 @@ function ScreenHeader({ navigation, canCreate, cvw, vh, isTablet }) {
           }}
         >
           <Ionicons name="add" size={isTablet ? cvw * 2.2 : cvw * 4.5} color="#000" />
-          <Text style={{ color: "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.2 : cvw * 3.5 }}>Add Staff</Text>
+          <Text style={{ color: "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.2 : cvw * 3.5 }}>
+            Add Staff
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -185,17 +302,21 @@ export default function StaffListScreen() {
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [filter, setFilter] = useState("all");
 
   const navigation = useNavigation();
+  const route = useRoute();
   const permissions = useAuthStore((s) => s.permissions);
   const { vw, vh, cvw, isTablet } = useResponsive();
 
+  const canCreate = permissions.includes("staff.create");
+
+  // ─── Load ─────────────────────────────────────────────────────────────────
   const load = async () => {
     try {
       setLoading(true);
       const data = await fetchUsers();
       setUsers(data);
-      setFiltered(data);
     } catch (err) {
       console.log("STAFF LOAD ERROR:", err);
     } finally {
@@ -203,20 +324,32 @@ export default function StaffListScreen() {
     }
   };
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  useEffect(() => { load(); }, []);
 
   useRealtime("user:created", load);
   useRealtime("user:updated", load);
   useRealtime("user:deleted", load);
 
   useEffect(() => {
-    if (!search.trim()) {
-      setFiltered(users);
-    } else {
+    if (route.params?._refresh) load();
+  }, [route.params?._refresh]);
+
+  // ─── Filter + Search ───────────────────────────────────────────────────────
+  useEffect(() => {
+    let result = users;
+
+    if (filter === "active") result = result.filter((u) => u.isActive);
+    else if (filter === "inactive") result = result.filter((u) => !u.isActive);
+
+    if (search.trim()) {
       const q = search.toLowerCase();
-      setFiltered(users.filter((u) => u.name?.toLowerCase().includes(q) || u.mobile?.includes(q)));
+      result = result.filter(
+        (u) => u.name?.toLowerCase().includes(q) || u.mobile?.includes(q)
+      );
     }
-  }, [search, users]);
+
+    setFiltered(result);
+  }, [search, users, filter]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -224,6 +357,7 @@ export default function StaffListScreen() {
     setRefreshing(false);
   };
 
+  // ─── Loading screen ────────────────────────────────────────────────────────
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center", alignItems: "center" }}>
@@ -234,23 +368,35 @@ export default function StaffListScreen() {
     );
   }
 
-  const canCreate = permissions.includes("staff.create");
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <StatusBar barStyle="light-content" />
-      <View style={{ flex: 1, paddingHorizontal: isTablet ? vw * 4 : vw * 5, paddingTop: vh * 3, paddingBottom: isTablet ? vh * 3 : vh * 4 }}>
-        <View style={{ backgroundColor: C.surface, borderRadius: 28, borderWidth: 1, borderColor: C.borderGold, flex: 1, padding: isTablet ? vw * 3 : vw * 5 }}>
 
-          {/* Header is a stable outside component — never remounts */}
-          <ScreenHeader navigation={navigation} canCreate={canCreate} cvw={cvw} vh={vh} isTablet={isTablet} />
+      <View style={{
+        flex: 1,
+        paddingHorizontal: isTablet ? vw * 4 : vw * 5,
+        paddingTop: vh * 3,
+        paddingBottom: isTablet ? vh * 3 : vh * 4,
+      }}>
+        <View style={{
+          backgroundColor: C.surface,
+          borderRadius: 28,
+          borderWidth: 1,
+          borderColor: C.borderGold,
+          flex: 1,
+          padding: isTablet ? vw * 3 : vw * 5,
+        }}>
 
-          {/*
-            Inner content inlined — NOT wrapped in a nested component.
-            Keeps TextInput (search bar) stable so keyboard never dismisses.
-          */}
+          {/* Header — stable outside component */}
+          <ScreenHeader
+            navigation={navigation}
+            canCreate={canCreate}
+            cvw={cvw}
+            vh={vh}
+            isTablet={isTablet}
+          />
 
-          {/* Search bar */}
+          {/* Search bar — inlined to keep keyboard stable */}
           <View style={{
             flexDirection: "row", alignItems: "center",
             backgroundColor: C.inputBg,
@@ -258,10 +404,14 @@ export default function StaffListScreen() {
             borderRadius: 14,
             paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 4,
             paddingVertical: isTablet ? 10 : 12,
-            marginBottom: isTablet ? 12 : 16,
+            marginBottom: isTablet ? 12 : 14,
             gap: 10,
           }}>
-            <Ionicons name="search-outline" size={isTablet ? cvw * 2.2 : cvw * 4.5} color={searchFocused ? C.gold : C.muted} />
+            <Ionicons
+              name="search-outline"
+              size={isTablet ? cvw * 2.2 : cvw * 4.5}
+              color={searchFocused ? C.gold : C.muted}
+            />
             <TextInput
               placeholder="Search by name or mobile..."
               placeholderTextColor={C.muted}
@@ -278,16 +428,34 @@ export default function StaffListScreen() {
             )}
           </View>
 
+          {/* Filter Tabs */}
+          <FilterTabs
+            filter={filter}
+            setFilter={setFilter}
+            users={users}
+            cvw={cvw}
+            isTablet={isTablet}
+          />
+
           {/* Count row */}
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: isTablet ? 12 : 16 }}>
+          <View style={{
+            flexDirection: "row", alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: isTablet ? 12 : 14,
+          }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Ionicons name="people-outline" size={isTablet ? cvw * 2 : cvw * 3.5} color={C.muted} />
               <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
-                {filtered.length} {filtered.length === 1 ? "member" : "members"}{search.trim() ? ` found for "${search}"` : " total"}
+                {filtered.length} {filtered.length === 1 ? "member" : "members"}
+                {search.trim()
+                  ? ` found for "${search}"`
+                  : filter !== "all"
+                    ? ` ${filter}`
+                    : " total"}
               </Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: "#5DBE8A" }} />
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.green }} />
               <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 2.8 }}>
                 {users.filter((u) => u.isActive).length} active
               </Text>
@@ -303,8 +471,17 @@ export default function StaffListScreen() {
             numColumns={isTablet ? 2 : 1}
             key={isTablet ? "tablet" : "phone"}
             columnWrapperStyle={isTablet ? { gap: vw * 2 } : undefined}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.gold} colors={[C.gold]} />}
-            ListEmptyComponent={<EmptyState search={search} cvw={cvw} isTablet={isTablet} />}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={C.gold}
+                colors={[C.gold]}
+              />
+            }
+            ListEmptyComponent={
+              <EmptyState search={search} filter={filter} cvw={cvw} isTablet={isTablet} />
+            }
             renderItem={({ item }) => {
               const card = (
                 <StaffCard

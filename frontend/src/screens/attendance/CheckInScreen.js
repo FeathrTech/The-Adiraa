@@ -187,14 +187,22 @@ function SiteStatusCard({
   realUserLocation,
   currentAddress,
   cvw,
+  isNearest,
+  // ── STEP 4: added isSelected prop ──
+  isSelected,
   vh,
   isTablet,
 }) {
-  const borderColor = checkingLocation
-    ? C.border
-    : withinRadius
-      ? C.greenBorder
-      : C.orangeBorder;
+  // ── STEP 5: isSelected takes priority in border color ──
+  const borderColor = isSelected
+    ? C.gold
+    : checkingLocation
+      ? C.border
+      : withinRadius
+        ? C.greenBorder
+        : isNearest
+          ? C.blueBorder
+          : C.orangeBorder;
 
   return (
     <View
@@ -261,6 +269,32 @@ function SiteStatusCard({
           >
             {site?.name ?? "—"}
           </Text>
+
+          {/* ── STEP 6: SELECTED / NEAREST label below site name ── */}
+          {isSelected && (
+            <Text style={{
+              color: C.gold,
+              fontSize: isTablet ? cvw * 1.6 : cvw * 2.8,
+              fontWeight: "700",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              marginTop: 2,
+            }}>
+              SELECTED
+            </Text>
+          )}
+          {!isSelected && isNearest && (
+            <Text style={{
+              color: C.blue,
+              fontSize: isTablet ? cvw * 1.6 : cvw * 2.8,
+              fontWeight: "700",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              marginTop: 2,
+            }}>
+              NEAREST
+            </Text>
+          )}
         </View>
       </View>
 
@@ -439,7 +473,6 @@ export default function CheckInScreen() {
   const { vw, vh, cvw, isTablet } = useResponsive();
 
   const permissions = useAuthStore((s) => s.permissions);
- 
 
   const cameraRef = useRef(null);
 
@@ -449,65 +482,83 @@ export default function CheckInScreen() {
 
   const [photo, setPhoto] = useState(null);
   const [realUserLocation, setRealUserLocation] = useState(null);
-  const [currentAddress, setCurrentAddress] = useState(null); // reverse-geocoded
-  const [site, setSite] = useState(null);
+  const [currentAddress, setCurrentAddress] = useState(null);
+  const [sites, setSites] = useState([]);
+  const [activeSite, setActiveSite] = useState(null);
+  const [siteDistances, setSiteDistances] = useState({});
+  // ── STEP 1: selectedSite state ──
+  const [selectedSite, setSelectedSite] = useState(null);
   const [withinRadius, setWithinRadius] = useState(false);
   const [distance, setDistance] = useState(null);
   const [loading, setLoading] = useState(false);
   const [checkingLocation, setCheckingLocation] = useState(true);
   const [allowOutsideRadius, setAllowOutsideRadius] = useState(false);
-   if (!can(permissions, "attendance.checkin")) return null;
 
-  // ── GPS fetch ─────────────────────────────────────────────────────────────
-  const fetchLocation = useCallback(async (siteData) => {
-    if (!siteData) return;
+  if (!can(permissions, "attendance.checkin")) return null;
+
+  // ── STEP 2: fetchLocation respects selectedSite ───────────────────────────
+  const fetchLocation = useCallback(async (siteList) => {
+    if (!siteList || siteList.length === 0) return;
+
     try {
       setCheckingLocation(true);
+
       const loc = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
+
       const { latitude, longitude } = loc.coords;
-      const dist = getDistanceInMeters(
-        latitude, longitude,
-        siteData.latitude, siteData.longitude
-      );
-      const inRange = dist <= siteData.radius + 15;
 
-      console.log("──────── LOCATION DEBUG ────────");
-      console.log("User:", latitude, longitude);
-      console.log("Site:", siteData.latitude, siteData.longitude);
-      console.log("Distance (m):", dist.toFixed(1));
-      console.log("Radius:", siteData.radius);
-      console.log("In range:", inRange);
-      console.log("────────────────────────────────");
+      let nearest = null;
+      let minDist = Infinity;
+      let distancesMap = {};
 
-      setDistance(dist);
-      setWithinRadius(inRange);
+      siteList.forEach((s) => {
+        const dist = getDistanceInMeters(
+          latitude,
+          longitude,
+          s.latitude,
+          s.longitude
+        );
+
+        const inRange = dist <= s.radius + 15;
+
+        distancesMap[s.id] = {
+          distance: dist,
+          withinRadius: inRange,
+        };
+
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = s;
+        }
+      });
+
+      setSiteDistances(distancesMap);
       setRealUserLocation({ latitude, longitude });
 
-      // Reverse geocode only when outside radius
-      if (!inRange) {
-        try {
-          const places = await Location.reverseGeocodeAsync({ latitude, longitude });
-          if (places?.length > 0) {
-            const p = places[0];
-            const parts = [p.name, p.street, p.district, p.city, p.region]
-              .filter(Boolean)
-              .filter((v, i, arr) => arr.indexOf(v) === i); // dedupe
-            setCurrentAddress(parts.slice(0, 3).join(", "));
-          }
-        } catch {
-          setCurrentAddress(null);
-        }
+      // ── If user has manually selected a site, honour that choice;
+      //    otherwise fall back to auto-select (nearest in-range or nearest) ──
+      if (selectedSite) {
+        const data = distancesMap[selectedSite.id];
+        setActiveSite(selectedSite);
+        setDistance(data?.distance);
+        setWithinRadius(data?.withinRadius);
       } else {
-        setCurrentAddress(null);
+        const selected =
+          siteList.find((s) => distancesMap[s.id].withinRadius) || nearest;
+        setActiveSite(selected);
+        setDistance(distancesMap[selected.id].distance);
+        setWithinRadius(distancesMap[selected.id].withinRadius);
       }
+
     } catch {
       Alert.alert("Location Error", "Unable to fetch location");
     } finally {
       setCheckingLocation(false);
     }
-  }, []);
+  // ── STEP 2 (dependency): re-run when selectedSite changes ──
+  }, [selectedSite]);
 
   // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -543,7 +594,7 @@ export default function CheckInScreen() {
           return;
         }
 
-        setSite(siteData);
+        setSites(siteData);
 
         if (configRes.status === "fulfilled") {
           setAllowOutsideRadius(!!configRes.value.data?.allowOutsideRadius);
@@ -563,7 +614,7 @@ export default function CheckInScreen() {
     if (!cameraRef.current) return;
     const result = await cameraRef.current.takePictureAsync({ quality: 0.6 });
     setPhoto(result);
-    if (site) await fetchLocation(site);
+    if (sites.length) await fetchLocation(sites);
   };
 
   const redoPhoto = () => setPhoto(null);
@@ -584,8 +635,13 @@ export default function CheckInScreen() {
       return;
     }
 
-    const submitLat = withinRadius ? site.latitude : realUserLocation.latitude;
-    const submitLng = withinRadius ? site.longitude : realUserLocation.longitude;
+    const submitLat = withinRadius
+      ? activeSite.latitude
+      : realUserLocation.latitude;
+
+    const submitLng = withinRadius
+      ? activeSite.longitude
+      : realUserLocation.longitude;
 
     try {
       setLoading(true);
@@ -722,13 +778,6 @@ export default function CheckInScreen() {
           <ClockCard cvw={cvw} vh={vh} isTablet={isTablet} />
 
           {/* ── CAMERA / PHOTO ── */}
-          {/* 
-            FIX: On Android, CameraView intercepts all touch events and prevents
-            the Capture Photo button below from firing. Wrapping CameraView in a
-            pointerEvents="none" View stops it from consuming touches while still
-            rendering the preview. The outer container uses pointerEvents="box-none"
-            so its own touches (Flip button) still work.
-          */}
           <View
             pointerEvents="box-none"
             style={{
@@ -742,12 +791,10 @@ export default function CheckInScreen() {
           >
             {!photo ? (
               <>
-                {/* Camera preview — non-interactive so touches pass through */}
                 <View style={{ flex: 1 }} pointerEvents="none">
                   <CameraView ref={cameraRef} facing={cameraType} style={{ flex: 1 }} />
                 </View>
 
-                {/* Flip — sits above the pointerEvents="none" layer */}
                 <TouchableOpacity
                   onPress={toggleCamera}
                   style={{
@@ -781,7 +828,6 @@ export default function CheckInScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                {/* Guide hint */}
                 <View
                   style={{
                     position: "absolute",
@@ -814,20 +860,61 @@ export default function CheckInScreen() {
             )}
           </View>
 
-          {/* ── SITE STATUS ── */}
-          {site && (
-            <SiteStatusCard
-              site={site}
-              withinRadius={withinRadius}
-              checkingLocation={checkingLocation}
-              allowOutsideRadius={allowOutsideRadius}
-              distance={distance}
-              realUserLocation={realUserLocation}
-              currentAddress={currentAddress}
-              cvw={cvw}
-              vh={vh}
-              isTablet={isTablet}
-            />
+          {/* ── STEP 7: Selected site banner ── */}
+          {selectedSite && (
+            <Text
+              style={{
+                color: C.gold,
+                textAlign: "center",
+                marginBottom: vh * 1,
+                fontWeight: "600",
+                fontSize: isTablet ? cvw * 2 : cvw * 3.5,
+                letterSpacing: 0.5,
+              }}
+            >
+              Selected Site: {selectedSite.name}
+            </Text>
+          )}
+
+          {/* ── SITE STATUS CARDS ── */}
+          {sites.length > 0 && (
+            <View style={{ gap: vh * 1.5 }}>
+              {sites.map((s) => {
+                const data = siteDistances[s.id] || {};
+                const isNearest = activeSite?.id === s.id;
+
+                // ── STEP 3: wrap each card in TouchableOpacity for manual selection ──
+                return (
+                  <TouchableOpacity
+                    key={s.id}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      setSelectedSite(s);
+                      const d = siteDistances[s.id] || {};
+                      setActiveSite(s);
+                      setDistance(d.distance);
+                      setWithinRadius(d.withinRadius);
+                    }}
+                  >
+                    <SiteStatusCard
+                      site={s}
+                      withinRadius={data.withinRadius}
+                      checkingLocation={checkingLocation}
+                      allowOutsideRadius={allowOutsideRadius}
+                      distance={data.distance}
+                      realUserLocation={realUserLocation}
+                      currentAddress={currentAddress}
+                      cvw={cvw}
+                      vh={vh}
+                      isTablet={isTablet}
+                      isNearest={isNearest}
+                      // ── STEP 3: pass isSelected ──
+                      isSelected={selectedSite?.id === s.id}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           )}
 
           {/* ── RETAKE ── */}

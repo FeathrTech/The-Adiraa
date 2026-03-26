@@ -72,7 +72,7 @@ import { AttendanceConfig } from './modules/attendance/attendance-config.entity'
         AuditLog,
         AttendanceConfig,
       ],
-      synchronize: true,
+      synchronize: false,
       migrationsRun: false,
       ssl: process.env.NODE_ENV === 'production'
         ? { rejectUnauthorized: true }

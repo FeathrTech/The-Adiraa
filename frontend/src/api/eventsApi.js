@@ -7,12 +7,13 @@ Used for colored calendar dates
 ========================================
 */
 
-export const getCalendarSummary = async ({ siteId, year, month }) => {
+export const getCalendarSummary = async ({ siteId, year, month, hallName }) => {
   const res = await api.get("/events/calendar", {
     params: {
       siteId,
       year,
       month,
+      ...(hallName ? { hallName } : {}),
     },
   });
 
@@ -26,11 +27,12 @@ Used when clicking a day
 ========================================
 */
 
-export const getEventsByDate = async (date, { locationId }) => {
+export const getEventsByDate = async (date, { locationId, hallName }) => {
   const res = await api.get("/events/by-date", {
     params: {
       date,
       locationId,
+      ...(hallName ? { hallName } : {}),
     },
   });
 

@@ -20,7 +20,7 @@ import { fetchRoles } from "../../api/roleApi";
 import { fetchSites } from "../../api/siteApi";
 import { updateUser } from "../../api/userApi";
 
-import { useRoute, useNavigation } from "@react-navigation/native";
+import { useRoute, useNavigation, CommonActions } from "@react-navigation/native";
 import { useAuthStore } from "../../store/authStore";
 import { can, ACTION_PERMISSIONS } from "../../config/permissionMap";
 
@@ -40,15 +40,13 @@ const C = {
   orange: "#F97316",
 };
 
-// ─── Limits ───────────────────────────────────────────────────────────────────
 const LIMITS = {
-  name:     { min: 2, max: 60 },
-  email:    { max: 254 },     // RFC 5321
+  name: { min: 2, max: 60 },
+  email: { max: 254 },
   password: { min: 8, max: 128 },
-  shift:    { max: 5 },       // HH:MM
+  shift: { max: 5 },
 };
 
-// ─── Responsive hook ──────────────────────────────────────────────────────────
 function useResponsive() {
   const { width, height } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -84,7 +82,6 @@ function StyledInput({
   editable = true, isPhone, maxLength, showCount, cvw, isTablet,
 }) {
   const [focused, setFocused] = useState(false);
-
   const currentLength = value ? value.length : 0;
   const isNearLimit = maxLength && currentLength >= Math.floor(maxLength * 0.85);
   const isAtLimit = maxLength && currentLength >= maxLength;
@@ -102,7 +99,6 @@ function StyledInput({
 
   const phoneCount = isPhone ? currentLength : 0;
 
-  // ── Phone variant ──
   if (isPhone) {
     return (
       <View style={{ marginBottom: isTablet ? cvw * 1.8 : cvw * 4 }}>
@@ -111,8 +107,7 @@ function StyledInput({
           borderWidth: 1,
           borderColor: !editable ? C.border : focused ? C.gold : C.border,
           borderRadius: 12,
-          flexDirection: "row",
-          alignItems: "center",
+          flexDirection: "row", alignItems: "center",
           paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 4,
         }}>
           <TextInput
@@ -132,12 +127,7 @@ function StyledInput({
               paddingVertical: isTablet ? cvw * 1.2 : cvw * 3,
             }}
           />
-          <Text style={{
-            color: phoneCount === 10 ? C.gold : C.muted,
-            fontSize: isTablet ? cvw * 1.8 : cvw * 3,
-            fontWeight: "600",
-            marginLeft: 6,
-          }}>
+          <Text style={{ color: phoneCount === 10 ? C.gold : C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3, fontWeight: "600", marginLeft: 6 }}>
             {phoneCount}/10
           </Text>
         </View>
@@ -150,7 +140,6 @@ function StyledInput({
     );
   }
 
-  // ── Standard variant ──
   const counterColor = isAtLimit ? C.red : isNearLimit ? C.orange : C.muted;
 
   return (
@@ -169,11 +158,7 @@ function StyledInput({
         style={{
           backgroundColor: editable ? C.inputBg : C.faint,
           borderWidth: 1,
-          borderColor: !editable
-            ? C.border
-            : focused
-              ? isAtLimit ? C.red : C.gold
-              : isAtLimit ? "rgba(229,115,115,0.5)" : C.border,
+          borderColor: !editable ? C.border : focused ? (isAtLimit ? C.red : C.gold) : (isAtLimit ? "rgba(229,115,115,0.5)" : C.border),
           borderRadius: 12,
           paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 4,
           paddingVertical: isTablet ? cvw * 1.2 : cvw * 3,
@@ -182,13 +167,7 @@ function StyledInput({
         }}
       />
       {showCount && maxLength && editable && (
-        <Text style={{
-          color: counterColor,
-          fontSize: isTablet ? cvw * 1.6 : cvw * 2.8,
-          textAlign: "right",
-          marginTop: 4,
-          marginRight: 2,
-        }}>
+        <Text style={{ color: counterColor, fontSize: isTablet ? cvw * 1.6 : cvw * 2.8, textAlign: "right", marginTop: 4, marginRight: 2 }}>
           {currentLength}/{maxLength}
         </Text>
       )}
@@ -305,6 +284,85 @@ function UploadButton({ icon, label, hint, selected, onPress, preview, cvw, isTa
   );
 }
 
+// ─── Toggle row ───────────────────────────────────────────────────────────────
+function ToggleRow({ icon, label, description, value, onToggle, cvw, isTablet }) {
+  return (
+    <TouchableOpacity
+      onPress={onToggle}
+      activeOpacity={0.8}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: value ? "rgba(201,162,39,0.06)" : C.inputBg,
+        borderWidth: 1,
+        borderColor: value ? C.borderGold : C.border,
+        borderRadius: 14,
+        paddingHorizontal: isTablet ? cvw * 2.5 : cvw * 4,
+        paddingVertical: isTablet ? cvw * 1.4 : cvw * 3.2,
+        marginBottom: isTablet ? cvw * 1.5 : cvw * 3,
+      }}
+    >
+      {/* Left: icon + text */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, marginRight: 12 }}>
+        <View style={{
+          width: isTablet ? cvw * 5 : cvw * 9,
+          height: isTablet ? cvw * 5 : cvw * 9,
+          borderRadius: cvw * 5,
+          backgroundColor: value ? "rgba(201,162,39,0.12)" : C.faint,
+          borderWidth: 1,
+          borderColor: value ? C.borderGold : C.border,
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <Ionicons
+            name={icon}
+            size={isTablet ? cvw * 2.2 : cvw * 4.5}
+            color={value ? C.gold : C.muted}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{
+            color: value ? C.white : C.muted,
+            fontWeight: value ? "700" : "500",
+            fontSize: isTablet ? cvw * 2.2 : cvw * 3.8,
+            marginBottom: 2,
+          }}>
+            {label}
+          </Text>
+          <Text style={{
+            color: C.muted,
+            fontSize: isTablet ? cvw * 1.7 : cvw * 2.8,
+            lineHeight: isTablet ? cvw * 2.6 : cvw * 4.2,
+          }}>
+            {description}
+          </Text>
+        </View>
+      </View>
+
+      {/* Right: toggle pill */}
+      <View style={{
+        width: isTablet ? cvw * 8 : cvw * 14,
+        height: isTablet ? cvw * 4 : cvw * 7.5,
+        borderRadius: 100,
+        backgroundColor: value ? C.gold : C.faint,
+        justifyContent: "center",
+        paddingHorizontal: isTablet ? cvw * 0.4 : cvw * 0.8,
+        flexShrink: 0,
+      }}>
+        <View style={{
+          width: isTablet ? cvw * 3 : cvw * 6,
+          height: isTablet ? cvw * 3 : cvw * 6,
+          borderRadius: 100,
+          backgroundColor: C.white,
+          alignSelf: value ? "flex-end" : "flex-start",
+        }} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Screen header ────────────────────────────────────────────────────────────
 function ScreenHeader({ navigation, cvw, vw, vh, isTablet }) {
   return (
@@ -344,9 +402,15 @@ function ScreenHeader({ navigation, cvw, vw, vh, isTablet }) {
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const isValidTime = (t) => !t || /^([01]\d|2[0-3]):([0-5]\d)$/.test(t);
 const isValidEmail = (e) => !e || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+const formatShiftTime = (text) => {
+  const digits = text.replace(/[^0-9]/g, "");
+  if (digits.length === 0) return "";
+  if (digits.length <= 2) return digits;
+  return digits.slice(0, 2) + ":" + digits.slice(2, 4);
+};
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function EditStaffScreen() {
@@ -366,13 +430,17 @@ export default function EditStaffScreen() {
   const [roles, setRoles] = useState([]);
   const [sites, setSites] = useState([]);
   const [selectedRole, setSelectedRole] = useState(null);
-  const [selectedSite, setSelectedSite] = useState(null);
+  const [selectedSites, setSelectedSites] = useState([]);
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [idProof, setIdProof] = useState(null);
   const [existingProfileUrl, setExistingProfileUrl] = useState(null);
   const [existingIdProofUrl, setExistingIdProofUrl] = useState(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // ── Self-upload toggles — pre-filled from user record ────────────────────
+  const [allowSelfPhotoUpload, setAllowSelfPhotoUpload] = useState(false);
+  const [allowSelfIdUpload, setAllowSelfIdUpload] = useState(false);
 
   useEffect(() => {
     if (!can(userPermissions, ACTION_PERMISSIONS.staff.edit)) navigation.goBack();
@@ -389,8 +457,15 @@ export default function EditStaffScreen() {
       setShiftEnd(user.shiftEndTime || "");
       setExistingProfileUrl(user.profilePhotoUrl || null);
       setExistingIdProofUrl(user.idProofUrl || null);
-      setSelectedRole(Array.isArray(user.roles) && user.roles.length > 0 ? user.roles[0].id : null);
-      setSelectedSite(user.location?.id || null);
+      setSelectedRole(
+        Array.isArray(user.roles) && user.roles.length > 0 ? user.roles[0].id : null
+      );
+      setSelectedSites(
+        Array.isArray(user.locations) ? user.locations.map((l) => l.id) : []
+      );
+      // ── Pre-fill toggles from user flags set during creation ──
+      setAllowSelfPhotoUpload(!!user.allowSelfPhotoUpload);
+      setAllowSelfIdUpload(!!user.allowSelfIdUpload);
     }
   }, [user]);
 
@@ -407,14 +482,57 @@ export default function EditStaffScreen() {
     }
   };
 
+  const toggleSite = (id) => {
+    setSelectedSites((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
+
   const pickProfilePhoto = async () => {
-    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6 });
-    if (!result.canceled) setProfilePhoto(result.assets[0]);
+    Alert.alert("Profile Photo", "Choose option", [
+      {
+        text: "Camera",
+        onPress: async () => {
+          const r = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6 });
+          if (!r.canceled) setProfilePhoto(r.assets[0]);
+        },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6 });
+          if (!r.canceled) setProfilePhoto(r.assets[0]);
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
   };
 
   const pickIdProof = async () => {
-    const result = await DocumentPicker.getDocumentAsync({ type: ["image/*", "application/pdf"] });
-    if (!result.canceled) setIdProof(result.assets[0]);
+    Alert.alert("ID Proof", "Choose option", [
+      {
+        text: "Camera",
+        onPress: async () => {
+          const r = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images });
+          if (!r.canceled) setIdProof(r.assets[0]);
+        },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images });
+          if (!r.canceled) setIdProof(r.assets[0]);
+        },
+      },
+      {
+        text: "Document",
+        onPress: async () => {
+          const r = await DocumentPicker.getDocumentAsync({ type: ["image/*", "application/pdf"] });
+          if (!r.canceled) setIdProof(r.assets[0]);
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
   };
 
   const validate = () => {
@@ -422,12 +540,10 @@ export default function EditStaffScreen() {
     if (name.trim().length < LIMITS.name.min) return `Name must be at least ${LIMITS.name.min} characters`;
     if (mobile && mobile.length !== 10) return "Mobile number must be exactly 10 digits";
     if (email && !isValidEmail(email)) return "Enter a valid email address";
-    if (password && password.length < LIMITS.password.min)
-      return `New password must be at least ${LIMITS.password.min} characters`;
+    if (password && password.length < LIMITS.password.min) return `New password must be at least ${LIMITS.password.min} characters`;
     if (shiftStart && !isValidTime(shiftStart)) return "Shift start must be in HH:MM format (e.g. 09:00)";
     if (shiftEnd && !isValidTime(shiftEnd)) return "Shift end must be in HH:MM format (e.g. 18:00)";
     if (roles.length > 0 && !selectedRole) return "Please select a role";
-    if (sites.length > 0 && !selectedSite) return "Please select a location";
     return null;
   };
 
@@ -439,17 +555,41 @@ export default function EditStaffScreen() {
       const formData = new FormData();
       formData.append("name", name.trim());
       if (mobile) formData.append("mobile", mobile);
-      if (email) formData.append("email", email.trim());
+      formData.append("email", email?.trim() ?? "");
       if (password) formData.append("password", password);
       if (shiftStart) formData.append("shiftStartTime", shiftStart);
       if (shiftEnd) formData.append("shiftEndTime", shiftEnd);
       if (selectedRole) formData.append("roleIds", JSON.stringify([selectedRole]));
-      if (selectedSite) formData.append("locationId", selectedSite);
+      if (selectedSites.length > 0) formData.append("locationIds", JSON.stringify(selectedSites));
+
+      // ── Self-upload flags ──────────────────────────────────────────────────
+      formData.append("allowSelfPhotoUpload", String(allowSelfPhotoUpload));
+      formData.append("allowSelfIdUpload", String(allowSelfIdUpload));
+
       if (profilePhoto) formData.append("profilePhoto", { uri: profilePhoto.uri, name: "profile.jpg", type: "image/jpeg" });
       if (idProof) formData.append("idProof", { uri: idProof.uri, name: idProof.name || "document.pdf", type: idProof.mimeType || "application/pdf" });
-      await updateUser(user.id, formData);
-      Alert.alert("Success", "Staff updated");
-      navigation.goBack();
+
+      const updatedUser = await updateUser(user.id, formData);
+
+      Alert.alert("Success", "Staff updated", [
+        {
+          text: "OK",
+          onPress: () => {
+            navigation.dispatch((state) => {
+              const routes = state.routes.filter(r => r.name !== "EditStaff").map(r => {
+                if (r.name === "StaffDetail") {
+                  return {
+                    ...r,
+                    params: { ...r.params, user: updatedUser, _refresh: Date.now() },
+                  };
+                }
+                return r;
+              });
+              return CommonActions.reset({ ...state, routes, index: routes.length - 1 });
+            });
+          },
+        },
+      ]);
     } catch (error) {
       Alert.alert("Error", error.response?.data?.message || "Failed to update staff");
     } finally {
@@ -489,18 +629,11 @@ export default function EditStaffScreen() {
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingHorizontal: isTablet ? vw * 3 : vw * 5, paddingTop: vh * 2, paddingBottom: 80 }}
           >
-
             {/* ── PERSONAL INFO ── */}
             <SectionHeader title="Personal Info" icon="person-outline" cvw={cvw} isTablet={isTablet} />
 
             <FieldLabel icon="text-outline" label="Full Name" hint={`2–${LIMITS.name.max} characters`} required cvw={cvw} isTablet={isTablet} />
-            <StyledInput
-              value={name} onChangeText={setName}
-              placeholder="e.g. Rahul Sharma"
-              maxLength={LIMITS.name.max}
-              showCount
-              cvw={cvw} isTablet={isTablet}
-            />
+            <StyledInput value={name} onChangeText={setName} placeholder="e.g. Rahul Sharma" maxLength={LIMITS.name.max} showCount cvw={cvw} isTablet={isTablet} />
 
             {isTablet ? (
               <View style={{ flexDirection: "row", gap: cvw * 3 }}>
@@ -510,14 +643,7 @@ export default function EditStaffScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <FieldLabel icon="mail-outline" label="Email" hint="Notifications and recovery" optional cvw={cvw} isTablet={isTablet} />
-                  <StyledInput
-                    value={email} onChangeText={setEmail}
-                    placeholder="e.g. rahul@company.com"
-                    keyboardType="email-address"
-                    maxLength={LIMITS.email.max}
-                    showCount
-                    cvw={cvw} isTablet={isTablet}
-                  />
+                  <StyledInput value={email} onChangeText={setEmail} placeholder="e.g. rahul@company.com" keyboardType="email-address" maxLength={LIMITS.email.max} showCount cvw={cvw} isTablet={isTablet} />
                 </View>
               </View>
             ) : (
@@ -525,14 +651,7 @@ export default function EditStaffScreen() {
                 <FieldLabel icon="call-outline" label="Mobile Number" hint="10-digit number" optional cvw={cvw} isTablet={isTablet} />
                 <StyledInput value={mobile} onChangeText={setMobile} placeholder="e.g. 9876543210" isPhone cvw={cvw} isTablet={isTablet} />
                 <FieldLabel icon="mail-outline" label="Email" hint="Notifications and recovery" optional cvw={cvw} isTablet={isTablet} />
-                <StyledInput
-                  value={email} onChangeText={setEmail}
-                  placeholder="e.g. rahul@company.com"
-                  keyboardType="email-address"
-                  maxLength={LIMITS.email.max}
-                  showCount
-                  cvw={cvw} isTablet={isTablet}
-                />
+                <StyledInput value={email} onChangeText={setEmail} placeholder="e.g. rahul@company.com" keyboardType="email-address" maxLength={LIMITS.email.max} showCount cvw={cvw} isTablet={isTablet} />
               </>
             )}
 
@@ -543,23 +662,9 @@ export default function EditStaffScreen() {
               hint={`Leave blank to keep current${password ? ` · min ${LIMITS.password.min} characters` : ""}`}
               optional cvw={cvw} isTablet={isTablet}
             />
-            <StyledInput
-              value={password} onChangeText={setPassword}
-              placeholder="Enter new password to change"
-              secureTextEntry
-              maxLength={LIMITS.password.max}
-              showCount
-              cvw={cvw} isTablet={isTablet}
-            />
-            {/* Min-length hint shown while typing if below minimum */}
+            <StyledInput value={password} onChangeText={setPassword} placeholder="Enter new password to change" secureTextEntry maxLength={LIMITS.password.max} showCount cvw={cvw} isTablet={isTablet} />
             {password.length > 0 && password.length < LIMITS.password.min && (
-              <Text style={{
-                color: C.red,
-                fontSize: isTablet ? cvw * 1.6 : cvw * 2.8,
-                marginTop: -isTablet ? cvw * 1.4 : cvw * 3,
-                marginBottom: isTablet ? cvw * 1 : cvw * 2,
-                marginLeft: 2,
-              }}>
+              <Text style={{ color: C.red, fontSize: isTablet ? cvw * 1.6 : cvw * 2.8, marginTop: -(isTablet ? cvw * 1.4 : cvw * 3), marginBottom: isTablet ? cvw * 1 : cvw * 2, marginLeft: 2 }}>
                 Password must be at least {LIMITS.password.min} characters
               </Text>
             )}
@@ -569,23 +674,11 @@ export default function EditStaffScreen() {
             <View style={{ flexDirection: "row", gap: cvw * 3 }}>
               <View style={{ flex: 1 }}>
                 <FieldLabel icon="sunny-outline" label="Start Time" hint="24-hr format (HH:MM)" optional cvw={cvw} isTablet={isTablet} />
-                <StyledInput
-                  value={shiftStart} onChangeText={setShiftStart}
-                  placeholder="09:00"
-                  keyboardType="numeric"
-                  maxLength={LIMITS.shift.max}
-                  cvw={cvw} isTablet={isTablet}
-                />
+                <StyledInput value={shiftStart} onChangeText={(t) => setShiftStart(formatShiftTime(t))} placeholder="09:00" keyboardType="numeric" maxLength={5} cvw={cvw} isTablet={isTablet} />
               </View>
               <View style={{ flex: 1 }}>
                 <FieldLabel icon="moon-outline" label="End Time" hint="24-hr format (HH:MM)" optional cvw={cvw} isTablet={isTablet} />
-                <StyledInput
-                  value={shiftEnd} onChangeText={setShiftEnd}
-                  placeholder="18:00"
-                  keyboardType="numeric"
-                  maxLength={LIMITS.shift.max}
-                  cvw={cvw} isTablet={isTablet}
-                />
+                <StyledInput value={shiftEnd} onChangeText={(t) => setShiftEnd(formatShiftTime(t))} placeholder="18:00" keyboardType="numeric" maxLength={5} cvw={cvw} isTablet={isTablet} />
               </View>
             </View>
 
@@ -617,19 +710,19 @@ export default function EditStaffScreen() {
               <>
                 <SectionHeader title="Assign Location" icon="location-outline" cvw={cvw} isTablet={isTablet} />
                 <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3, marginBottom: isTablet ? cvw * 1.5 : cvw * 3 }}>
-                  Site assigned for attendance tracking and radius checks
+                  Select one or more sites for attendance tracking
                 </Text>
                 {isTablet ? (
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: cvw * 1.5, marginBottom: cvw * 2 }}>
                     {sites.map((site) => (
                       <View key={site.id} style={{ minWidth: "30%" }}>
-                        <SelectorChip label={site.name} selected={selectedSite === site.id} onPress={() => setSelectedSite(site.id === selectedSite ? null : site.id)} cvw={cvw} isTablet={isTablet} />
+                        <SelectorChip label={site.name} selected={selectedSites.includes(site.id)} onPress={() => toggleSite(site.id)} cvw={cvw} isTablet={isTablet} />
                       </View>
                     ))}
                   </View>
                 ) : (
                   sites.map((site) => (
-                    <SelectorChip key={site.id} label={site.name} selected={selectedSite === site.id} onPress={() => setSelectedSite(site.id === selectedSite ? null : site.id)} cvw={cvw} isTablet={isTablet} />
+                    <SelectorChip key={site.id} label={site.name} selected={selectedSites.includes(site.id)} onPress={() => toggleSite(site.id)} cvw={cvw} isTablet={isTablet} />
                   ))
                 )}
               </>
@@ -645,20 +738,89 @@ export default function EditStaffScreen() {
               icon="camera-outline"
               label={profilePhoto ? "Profile Photo Updated" : "Change Profile Photo"}
               hint={profilePhoto ? profilePhoto.uri?.split("/").pop() : existingProfileUrl ? "Photo on file — tap to replace" : "No photo yet — tap to upload"}
-              selected={!!profilePhoto}
+              selected={!!profilePhoto || !!existingProfileUrl}
               onPress={pickProfilePhoto}
-              preview={profilePhoto?.uri || (existingProfileUrl && !profilePhoto ? existingProfileUrl : null)}
+              preview={profilePhoto?.uri ?? existingProfileUrl ?? null}
               cvw={cvw} isTablet={isTablet}
             />
             <UploadButton
               icon="id-card-outline"
               label={idProof ? "ID Proof Updated" : "Change ID Proof"}
               hint={idProof ? (idProof.name || idProof.uri?.split("/").pop()) : existingIdProofUrl ? "ID proof on file — tap to replace" : "No ID proof yet — tap to upload"}
-              selected={!!idProof}
+              selected={!!idProof || !!existingIdProofUrl}
               onPress={pickIdProof}
-              preview={idProof?.uri && !idProof.name?.endsWith(".pdf") ? idProof.uri : null}
+              preview={
+                idProof?.uri && !idProof.name?.endsWith(".pdf")
+                  ? idProof.uri
+                  : existingIdProofUrl && !existingIdProofUrl.endsWith(".pdf")
+                    ? existingIdProofUrl
+                    : null
+              }
               cvw={cvw} isTablet={isTablet}
             />
+
+            {/* ── SELF-UPLOAD PERMISSIONS ── */}
+            <View style={{
+              height: 1,
+              backgroundColor: C.border,
+              marginTop: isTablet ? cvw * 1 : cvw * 2,
+              marginBottom: isTablet ? cvw * 2 : cvw * 4,
+            }} />
+
+            <SectionHeader title="Self Upload" icon="cloud-upload-outline" cvw={cvw} isTablet={isTablet} />
+            <Text style={{
+              color: C.muted,
+              fontSize: isTablet ? cvw * 1.8 : cvw * 3,
+              marginBottom: isTablet ? cvw * 1.5 : cvw * 3,
+              lineHeight: isTablet ? cvw * 2.8 : cvw * 4.5,
+            }}>
+              Allow this staff member to upload their own documents from the app
+            </Text>
+
+            {/* Tablet: side-by-side | Phone: stacked */}
+            {isTablet ? (
+              <View style={{ flexDirection: "row", gap: cvw * 2 }}>
+                <View style={{ flex: 1 }}>
+                  <ToggleRow
+                    icon="camera-outline"
+                    label="Profile Photo Upload"
+                    description="Staff can update their own profile photo"
+                    value={allowSelfPhotoUpload}
+                    onToggle={() => setAllowSelfPhotoUpload((p) => !p)}
+                    cvw={cvw} isTablet={isTablet}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <ToggleRow
+                    icon="id-card-outline"
+                    label="ID Proof Upload"
+                    description="Staff can upload their own ID proof document"
+                    value={allowSelfIdUpload}
+                    onToggle={() => setAllowSelfIdUpload((p) => !p)}
+                    cvw={cvw} isTablet={isTablet}
+                  />
+                </View>
+              </View>
+            ) : (
+              <>
+                <ToggleRow
+                  icon="camera-outline"
+                  label="Profile Photo Upload"
+                  description="Staff can update their own profile photo"
+                  value={allowSelfPhotoUpload}
+                  onToggle={() => setAllowSelfPhotoUpload((p) => !p)}
+                  cvw={cvw} isTablet={isTablet}
+                />
+                <ToggleRow
+                  icon="id-card-outline"
+                  label="ID Proof Upload"
+                  description="Staff can upload their own ID proof document"
+                  value={allowSelfIdUpload}
+                  onToggle={() => setAllowSelfIdUpload((p) => !p)}
+                  cvw={cvw} isTablet={isTablet}
+                />
+              </>
+            )}
 
             <View style={{ height: 1, backgroundColor: C.border, marginVertical: isTablet ? cvw * 2 : cvw * 5 }} />
 

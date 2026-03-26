@@ -38,8 +38,12 @@ EVENT ENTITY
 /* Fast filtering for tenant calendar */
 @Index(['tenant', 'date'])
 
-/* Prevent duplicate slot booking */
-@Index(['tenant', 'date', 'eventSlot'], { unique: true })
+/*
+  No longer unique — multiple in_talks allowed per hall+slot+date.
+  Only a BOOKED event blocks further bookings (enforced in service).
+  Index kept for query performance.
+*/
+@Index(['tenant', 'date', 'eventSlot', 'hallName'])
 
 /* Status lookup */
 @Index(['tenant', 'status'])
@@ -77,11 +81,11 @@ export class Event {
 
   /*
   ================================
-  OPTIONAL HALL
+  HALL — required, drives per-hall uniqueness
   ================================
   */
 
-  @Column({ nullable: true })
+  @Column()
   hallName: string;
 
   /*

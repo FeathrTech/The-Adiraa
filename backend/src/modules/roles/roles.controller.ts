@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Delete,
+  Patch,
 } from '@nestjs/common';
 
 import { RolesService } from './roles.service';
@@ -43,6 +44,16 @@ export class RolesController {
       body.permissionIds,
       user,
     );
+  }
+
+  @Patch(':id')
+  @RequirePermission('role.edit')
+  async updateRole(
+    @Param('id') roleId: string,
+    @Body() body: { name?: string; permissionIds?: string[] },
+    @CurrentUser() user: User,
+  ) {
+    return this.rolesService.updateRole(roleId, body, user);
   }
 
   @Post('assign-to-user')

@@ -55,7 +55,7 @@ export default function RoleListScreen() {
   const userPermissions = useAuthStore((s) => s.permissions);
   const { vw, vh, cvw, isTablet } = useResponsive();
 
-  // ─── Load (unchanged) ─────────────────────────────────────────────────────
+  // ─── Load ─────────────────────────────────────────────────────────────────
   const loadRoles = async () => {
     try {
       setLoading(true);
@@ -79,7 +79,11 @@ export default function RoleListScreen() {
     setRefreshing(false);
   };
 
-  const handleDelete = (roleId) => {
+  const handleDelete = (roleId, roleName) => {
+    if (roleName === "Owner") {
+      Alert.alert("Protected Role", "The Owner role cannot be deleted.");
+      return;
+    }
     Alert.alert("Delete Role", "Are you sure you want to delete this role?", [
       { text: "Cancel" },
       {
@@ -108,101 +112,118 @@ export default function RoleListScreen() {
   }
 
   // ─── Role card ────────────────────────────────────────────────────────────
-  const RoleCard = ({ item }) => (
-    <View style={{
-      backgroundColor: C.card,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: C.borderGold,
-      padding: isTablet ? cvw * 2.5 : cvw * 5,
-      marginBottom: isTablet ? vh * 1.8 : vh * 2,
-    }}>
-      {/* Top row: icon + name + permission count */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: cvw * 3, marginBottom: 10 }}>
-        <View style={{
-          width: isTablet ? cvw * 5.5 : cvw * 10,
-          height: isTablet ? cvw * 5.5 : cvw * 10,
-          borderRadius: cvw * 5,
-          backgroundColor: "rgba(201,162,39,0.12)",
-          borderWidth: 1, borderColor: C.borderGold,
-          alignItems: "center", justifyContent: "center",
-        }}>
-          <Ionicons name="shield-outline" size={isTablet ? cvw * 2.8 : cvw * 4.5} color={C.gold} />
-        </View>
+  const RoleCard = ({ item }) => {
+    const isOwnerRole = item.name === "Owner";
 
-        <View style={{ flex: 1 }}>
-          <Text style={{
-            color: C.white, fontWeight: "700",
-            fontSize: isTablet ? cvw * 2.8 : cvw * 4.5,
-            letterSpacing: 0.2,
+    return (
+      <View style={{
+        backgroundColor: C.card,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: C.borderGold,
+        padding: isTablet ? cvw * 2.5 : cvw * 5,
+        marginBottom: isTablet ? vh * 1.8 : vh * 2,
+      }}>
+        {/* Top row: icon + name + permission count */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: cvw * 3, marginBottom: 10 }}>
+          <View style={{
+            width: isTablet ? cvw * 5.5 : cvw * 10,
+            height: isTablet ? cvw * 5.5 : cvw * 10,
+            borderRadius: cvw * 5,
+            backgroundColor: "rgba(201,162,39,0.12)",
+            borderWidth: 1, borderColor: C.borderGold,
+            alignItems: "center", justifyContent: "center",
           }}>
-            {item.name}
-          </Text>
+            <Ionicons name="shield-outline" size={isTablet ? cvw * 2.8 : cvw * 4.5} color={C.gold} />
+          </View>
 
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
-            <Ionicons name="key-outline" size={isTablet ? cvw * 1.8 : cvw * 3} color={C.muted} />
-            <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
-              {item.permissions?.length || 0} permission{item.permissions?.length !== 1 ? "s" : ""}
-            </Text>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{
+                color: C.white, fontWeight: "700",
+                fontSize: isTablet ? cvw * 2.8 : cvw * 4.5,
+                letterSpacing: 0.2,
+              }}>
+                {item.name}
+              </Text>
+              {/* Protected badge */}
+              {isOwnerRole && (
+                <View style={{
+                  backgroundColor: "rgba(201,162,39,0.12)",
+                  borderWidth: 1, borderColor: C.borderGold,
+                  borderRadius: 6,
+                  paddingHorizontal: 7, paddingVertical: 2,
+                  flexDirection: "row", alignItems: "center", gap: 4,
+                }}>
+                  <Ionicons name="lock-closed-outline" size={isTablet ? cvw * 1.5 : cvw * 2.5} color={C.gold} />
+                  <Text style={{ color: C.gold, fontWeight: "600", fontSize: isTablet ? cvw * 1.6 : cvw * 2.5 }}>
+                    Protected
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
+              <Ionicons name="key-outline" size={isTablet ? cvw * 1.8 : cvw * 3} color={C.muted} />
+              <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
+                {item.permissions?.length || 0} permission{item.permissions?.length !== 1 ? "s" : ""}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Divider */}
-      <View style={{ height: 1, backgroundColor: C.border, marginBottom: 10 }} />
+        {/* Divider */}
+        <View style={{ height: 1, backgroundColor: C.border, marginBottom: 10 }} />
 
-      {/* Action buttons */}
-      <View style={{ flexDirection: "row", gap: cvw * 2 }}>
-        {can(userPermissions, ACTION_PERMISSIONS.role.assignPermissions) && (
-          <TouchableOpacity
-            onPress={() => navigation.navigate("EditRole", { roleId: item.id })}
-            activeOpacity={0.8}
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(201,162,39,0.12)",
-              borderWidth: 1, borderColor: C.borderGold,
-              paddingVertical: isTablet ? cvw * 1 : cvw * 2.5,
-              borderRadius: 10,
-              flexDirection: "row", alignItems: "center",
-              justifyContent: "center", gap: 6,
-            }}
-          >
-            <Ionicons name="key-outline" size={isTablet ? cvw * 2 : cvw * 3.8} color={C.gold} />
-            <Text style={{
-              color: C.gold, fontWeight: "600",
-              fontSize: isTablet ? cvw * 2.2 : cvw * 3.5,
-            }}>
-              Manage Permissions
-            </Text>
-          </TouchableOpacity>
-        )}
+        {/* Action buttons — Owner role only shows delete guard, no manage permissions */}
+        {!isOwnerRole && (
+          <View style={{ flexDirection: "row", gap: cvw * 2 }}>
+            {can(userPermissions, ACTION_PERMISSIONS.role.assignPermissions) && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate("EditRole", { roleId: item.id })}
+                activeOpacity={0.8}
+                style={{
+                  flex: 1,
+                  backgroundColor: "rgba(201,162,39,0.12)",
+                  borderWidth: 1, borderColor: C.borderGold,
+                  paddingVertical: isTablet ? cvw * 1 : cvw * 2.5,
+                  borderRadius: 10,
+                  flexDirection: "row", alignItems: "center",
+                  justifyContent: "center", gap: 6,
+                }}
+              >
+                <Ionicons name="key-outline" size={isTablet ? cvw * 2 : cvw * 3.8} color={C.gold} />
+                <Text style={{ color: C.gold, fontWeight: "600", fontSize: isTablet ? cvw * 2.2 : cvw * 3.5 }}>
+                  Manage Permissions
+                </Text>
+              </TouchableOpacity>
+            )}
 
-        {can(userPermissions, ACTION_PERMISSIONS.role.delete) && (
-          <TouchableOpacity
-            onPress={() => handleDelete(item.id)}
-            activeOpacity={0.8}
-            style={{
-              backgroundColor: "rgba(229,115,115,0.1)",
-              borderWidth: 1, borderColor: "rgba(229,115,115,0.35)",
-              paddingVertical: isTablet ? cvw * 1 : cvw * 2.5,
-              paddingHorizontal: isTablet ? cvw * 2 : cvw * 4,
-              borderRadius: 10,
-              flexDirection: "row", alignItems: "center",
-              justifyContent: "center", gap: 5,
-            }}
-          >
-            <Ionicons name="trash-outline" size={isTablet ? cvw * 2 : cvw * 3.8} color="#E57373" />
-            <Text style={{
-              color: "#E57373", fontWeight: "600",
-              fontSize: isTablet ? cvw * 2.2 : cvw * 3.5,
-            }}>
-              Delete
-            </Text>
-          </TouchableOpacity>
+            {can(userPermissions, ACTION_PERMISSIONS.role.delete) && (
+              <TouchableOpacity
+                onPress={() => handleDelete(item.id, item.name)}
+                activeOpacity={0.8}
+                style={{
+                  backgroundColor: "rgba(229,115,115,0.1)",
+                  borderWidth: 1, borderColor: "rgba(229,115,115,0.35)",
+                  paddingVertical: isTablet ? cvw * 1 : cvw * 2.5,
+                  paddingHorizontal: isTablet ? cvw * 2 : cvw * 4,
+                  borderRadius: 10,
+                  flexDirection: "row", alignItems: "center",
+                  justifyContent: "center", gap: 5,
+                }}
+              >
+                <Ionicons name="trash-outline" size={isTablet ? cvw * 2 : cvw * 3.8} color="#E57373" />
+                <Text style={{ color: "#E57373", fontWeight: "600", fontSize: isTablet ? cvw * 2.2 : cvw * 3.5 }}>
+                  Delete
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
-    </View>
-  );
+    );
+  };
 
   // ─── Empty state ──────────────────────────────────────────────────────────
   const EmptyState = () => (
@@ -286,10 +307,7 @@ export default function RoleListScreen() {
                 }}>
                   Admin
                 </Text>
-                <Text style={{
-                  color: C.white, fontSize: cvw * 5.5,
-                  fontWeight: "800", letterSpacing: -0.3,
-                }}>
+                <Text style={{ color: C.white, fontSize: cvw * 5.5, fontWeight: "800", letterSpacing: -0.3 }}>
                   Roles
                 </Text>
               </View>
@@ -298,7 +316,6 @@ export default function RoleListScreen() {
             <CardContent />
           </View>
 
-          {/* Create Role FAB */}
           {canCreate && (
             <TouchableOpacity
               onPress={() => navigation.navigate("CreateRole")}
@@ -317,10 +334,7 @@ export default function RoleListScreen() {
               }}
             >
               <Ionicons name="add-circle-outline" size={cvw * 5} color="#000" />
-              <Text style={{
-                color: "#000", fontWeight: "800",
-                fontSize: cvw * 4, letterSpacing: 0.5, textTransform: "uppercase",
-              }}>
+              <Text style={{ color: "#000", fontWeight: "800", fontSize: cvw * 4, letterSpacing: 0.5, textTransform: "uppercase" }}>
                 Create Role
               </Text>
             </TouchableOpacity>
@@ -331,9 +345,6 @@ export default function RoleListScreen() {
   }
 
   // ─── TABLET layout (≥768 px) — 2-col grid ────────────────────────────────
-  const rows = [];
-  for (let i = 0; i < roles.length; i += 2) rows.push(roles.slice(i, i + 2));
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <StatusBar barStyle="light-content" />
@@ -343,7 +354,6 @@ export default function RoleListScreen() {
           borderRadius: 28, borderWidth: 1, borderColor: C.borderGold,
           flex: 1, padding: vw * 3,
         }}>
-          {/* Header row with inline Create button */}
           <View style={{
             flexDirection: "row", alignItems: "flex-end",
             justifyContent: "space-between",
@@ -373,10 +383,7 @@ export default function RoleListScreen() {
                 }}>
                   Admin
                 </Text>
-                <Text style={{
-                  color: C.white, fontSize: cvw * 3.5,
-                  fontWeight: "800", letterSpacing: -0.3,
-                }}>
+                <Text style={{ color: C.white, fontSize: cvw * 3.5, fontWeight: "800", letterSpacing: -0.3 }}>
                   Roles
                 </Text>
               </View>
@@ -395,17 +402,13 @@ export default function RoleListScreen() {
                 }}
               >
                 <Ionicons name="add-circle-outline" size={cvw * 2.4} color="#000" />
-                <Text style={{
-                  color: "#000", fontWeight: "800",
-                  fontSize: cvw * 2.4, letterSpacing: 0.3,
-                }}>
+                <Text style={{ color: "#000", fontWeight: "800", fontSize: cvw * 2.4, letterSpacing: 0.3 }}>
                   Create Role
                 </Text>
               </TouchableOpacity>
             )}
           </View>
 
-          {/* 2-col grid via ScrollView */}
           <FlatList
             data={roles}
             keyExtractor={(item) => item.id}
