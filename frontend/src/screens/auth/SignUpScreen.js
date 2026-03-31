@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { registerTenantRequest } from "../../api/authApi";
 import { useAuthStore } from "../../store/authStore";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette (matches LoginScreen) ───────────────────────────────────────────
 const C = {
@@ -101,35 +102,36 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [focused, setFocused] = useState(null);
+  const { t } = useTranslation();
 
   // ─── Logic unchanged ──────────────────────────────────────────────────────
   const validate = () => {
-    if (!companyName.trim()) return "Company name is required";
-    if (!name.trim()) return "Owner name is required";
-    if (!mobile.trim()) return "Mobile number is required";
-    if (!password.trim()) return "Password is required";
-    if (password.length < 6) return "Password must be at least 6 characters";
+    if (!companyName.trim()) return t("auth.companyReq");
+    if (!name.trim()) return t("auth.ownerReq");
+    if (!mobile.trim()) return t("auth.mobileReq");
+    if (!password.trim()) return t("auth.passwordReq");
+    if (password.length < 6) return t("auth.passwordMin");
     return null;
   };
 
   const handleSignup = async () => {
     const error = validate();
-    if (error) { Alert.alert("Validation Error", error); return; }
+    if (error) { Alert.alert(t("auth.validationError"), error); return; }
     try {
       setLoading(true);
       const data = await registerTenantRequest({ companyName, name, mobile, password });
       console.log("Signup response:", data);
-      if (!data?.token || !data?.user) throw new Error("Invalid server response");
+      if (!data?.token || !data?.user) throw new Error(t("auth.somethingWentWrong"));
       await AsyncStorage.setItem("token", data.token);
       await AsyncStorage.setItem("user", JSON.stringify(data.user));
       login(data.user, data.token);
       Alert.alert(
-        "Account Created 🎉",
-        `Your login username is:\n\n${data.user.username}\n\nPlease save this.`
+        t("auth.accountCreated"),
+        t("auth.yourLoginUsername", { username: data.user.username })
       );
     } catch (error) {
       console.log("Signup error:", error);
-      Alert.alert("Signup Failed", error?.response?.data?.message || error.message || "Something went wrong");
+      Alert.alert(t("auth.signupFailed"), error?.response?.data?.message || error.message || t("auth.somethingWentWrong"));
     } finally {
       setLoading(false);
     }
@@ -167,12 +169,12 @@ export default function SignupScreen() {
               marginBottom: vh * 4,
               letterSpacing: 0.3,
             }}>
-              Create Company Account
+              {t("auth.createCompanyAccount")}
             </Text>
 
             {/* Company Name */}
             <InputRow
-              placeholder="Company Name"
+              placeholder={t("auth.companyNamePlaceholder")}
               value={companyName}
               onChangeText={setCompanyName}
               focused={focused === "company"}
@@ -183,7 +185,7 @@ export default function SignupScreen() {
 
             {/* Owner Name */}
             <InputRow
-              placeholder="Your Name"
+              placeholder={t("auth.yourNamePlaceholder")}
               value={name}
               onChangeText={setName}
               focused={focused === "name"}
@@ -194,7 +196,7 @@ export default function SignupScreen() {
 
             {/* Mobile */}
             <InputRow
-              placeholder="Mobile Number"
+              placeholder={t("auth.mobileNumberPlaceholder")}
               value={mobile}
               onChangeText={setMobile}
               keyboardType="phone-pad"
@@ -207,7 +209,7 @@ export default function SignupScreen() {
 
             {/* Password */}
             <InputRow
-              placeholder="Password"
+              placeholder={t("auth.passwordPlaceholder")}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPass}
@@ -241,7 +243,7 @@ export default function SignupScreen() {
                 <ActivityIndicator color="#000" size="small" />
               ) : (
                 <Text style={{ color: "#000", fontWeight: "700", fontSize: isTablet ? 17 : 15, letterSpacing: 0.5 }}>
-                  Create Account
+                  {t("auth.createAccountButton")}
                 </Text>
               )}
             </TouchableOpacity>
@@ -249,7 +251,7 @@ export default function SignupScreen() {
             {/* Back to login */}
             <TouchableOpacity onPress={() => navigation.goBack()} style={{ alignItems: "center" }}>
               <Text style={{ color: C.muted, fontSize: isTablet ? 14 : 12.5 }}>
-                Back to Login
+                {t("auth.backToLogin")}
               </Text>
             </TouchableOpacity>
 
@@ -258,7 +260,7 @@ export default function SignupScreen() {
           {/* Support link below card */}
           <TouchableOpacity style={{ marginTop: vh * 3, alignItems: "center" }}>
             <Text style={{ color: C.muted, fontSize: isTablet ? 13 : 12 }}>
-              Need Help? Contact Support
+              {t("auth.needHelp")}
             </Text>
           </TouchableOpacity>
 

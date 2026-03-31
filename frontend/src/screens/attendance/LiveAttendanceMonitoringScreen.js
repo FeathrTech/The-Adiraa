@@ -20,6 +20,7 @@ import api from "../../api/axios";
 import { useRealtime } from "../../hooks/useRealtime";
 import { can } from "../../config/permissionMap";
 import { useAuthStore } from "../../store/authStore";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 const C = {
@@ -72,6 +73,7 @@ export default function LiveAttendanceMonitoringScreen() {
   const [date, setDate] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
+  const { t } = useTranslation();
 
   const formattedDate = date.toLocaleDateString("en-CA", {
     timeZone: "Asia/Kolkata",
@@ -182,7 +184,7 @@ export default function LiveAttendanceMonitoringScreen() {
     const actions = [];
     if (can(userPermissions, "attendance.edit_record") && item.attendanceId) {
       actions.push({
-        label: "Edit Record",
+        label: t("attendance.editRecord"),
         action: () =>
           navigation.navigate("EditAttendanceRecord", {
             attendanceId: item.attendanceId,
@@ -191,17 +193,17 @@ export default function LiveAttendanceMonitoringScreen() {
     }
     if (can(userPermissions, "attendance.mark_present"))
       actions.push({
-        label: "Mark Present",
+        label: t("attendance.markPresent"),
         action: () => handleAttendanceAction(item, "mark_present"),
       });
     if (can(userPermissions, "attendance.mark_absent"))
-      actions.push({ label: "Mark Absent", action: () => handleAttendanceAction(item, "mark_absent") });
+      actions.push({ label: t("attendance.markAbsent"), action: () => handleAttendanceAction(item, "mark_absent") });
     if (can(userPermissions, "attendance.override_late"))
-      actions.push({ label: "Override Late", action: () => handleAttendanceAction(item, "override_late") });
+      actions.push({ label: t("attendance.overrideLate"), action: () => handleAttendanceAction(item, "override_late") });
     if (can(userPermissions, "attendance.override_halfday"))
-      actions.push({ label: "Override Half Day", action: () => handleAttendanceAction(item, "override_halfday") });
+      actions.push({ label: t("attendance.overrideHalfDay"), action: () => handleAttendanceAction(item, "override_halfday") });
     if (can(userPermissions, "attendance.delete_record"))
-      actions.push({ label: "Delete Record", action: () => handleAttendanceAction(item, "delete") });
+      actions.push({ label: t("attendance.deleteRecord"), action: () => handleAttendanceAction(item, "delete"), isDelete: true });
     return actions;
   };
 
@@ -210,10 +212,10 @@ export default function LiveAttendanceMonitoringScreen() {
     if (!s) return null;
 
     const labels = {
-      Present: "Present",
-      Absent: "Absent",
-      Late: "Late",
-      NotMarked: "Not Marked",
+      Present: t("attendance.present"),
+      Absent: t("attendance.absent"),
+      Late: t("attendance.late"),
+      NotMarked: t("attendance.notMarked"),
     };
 
     const label = labels[status] ?? status;
@@ -256,9 +258,9 @@ export default function LiveAttendanceMonitoringScreen() {
       paddingBottom: vh * 1.2,
       marginBottom: vh * 0.5,
     }}>
-      <Text style={{ width: colStaff, color: C.gold, fontWeight: "700", fontSize: isTablet ? cvw * 2.4 : vh * 1.6, letterSpacing: 1, textTransform: "uppercase" }}>Staff</Text>
-      <Text style={{ width: colStatus, color: C.gold, fontWeight: "700", fontSize: isTablet ? cvw * 2.4 : vh * 1.6, letterSpacing: 1, textTransform: "uppercase", textAlign: "center" }}>Status</Text>
-      <Text style={{ flex: 1, color: C.gold, fontWeight: "700", fontSize: isTablet ? cvw * 2.4 : vh * 1.6, letterSpacing: 1, textTransform: "uppercase", textAlign: "right" }}>Actions</Text>
+      <Text style={{ width: colStaff, color: C.gold, fontWeight: "700", fontSize: isTablet ? cvw * 2.4 : vh * 1.6, letterSpacing: 1, textTransform: "uppercase" }}>{t("attendance.staff")}</Text>
+      <Text style={{ width: colStatus, color: C.gold, fontWeight: "700", fontSize: isTablet ? cvw * 2.4 : vh * 1.6, letterSpacing: 1, textTransform: "uppercase", textAlign: "center" }}>{t("attendance.status")}</Text>
+      <Text style={{ flex: 1, color: C.gold, fontWeight: "700", fontSize: isTablet ? cvw * 2.4 : vh * 1.6, letterSpacing: 1, textTransform: "uppercase", textAlign: "right" }}>{t("attendance.actions")}</Text>
     </View>
   );
 
@@ -353,8 +355,8 @@ export default function LiveAttendanceMonitoringScreen() {
                 >
                   <Text style={{
                     fontSize: isTablet ? cvw * 2.2 : vh * 1.55,
-                    color: a.label === "Delete Record" ? "#E57373" : C.white,
-                    fontWeight: a.label === "Delete Record" ? "700" : "500",
+                    color: a.isDelete ? "#E57373" : C.white,
+                    fontWeight: a.isDelete ? "700" : "500",
                   }}>
                     {a.label}
                   </Text>
@@ -412,7 +414,7 @@ export default function LiveAttendanceMonitoringScreen() {
               color: filter === item ? "#000" : C.muted,
               fontWeight: filter === item ? "700" : "500",
             }}>
-              {item === "not_marked" ? "Not Marked" : item}
+              {item === "all" ? t("attendance.overview") : item === "not_marked" ? t("attendance.notMarked") : t(`attendance.${item}`)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -420,7 +422,7 @@ export default function LiveAttendanceMonitoringScreen() {
 
       {/* Total count */}
       <Text style={{ color: C.muted, marginTop: vh * 1, fontSize: isTablet ? cvw * 2.2 : vh * 1.6 }}>
-        Total Staff:{" "}
+        {t("attendance.totalStaff")}:{" "}
         <Text style={{ color: C.gold, fontWeight: "700" }}>{total}</Text>
       </Text>
     </View>
@@ -481,18 +483,22 @@ export default function LiveAttendanceMonitoringScreen() {
         {/* Header */}
         <View style={{
           flexDirection: "row",
-          justifyContent: "space-between",
+          justifyContent: "center",
           alignItems: "center",
           paddingHorizontal: vw * 4,
           marginTop: vh * 1,
+          minHeight: vh * 4,
         }}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity 
+            style={{ position: "absolute", left: vw * 4 }}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons name="arrow-back" size={vh * 2.5} color={C.gold} />
           </TouchableOpacity>
           <Text style={{ color: C.white, fontSize: vh * 2, fontWeight: "700" }}>
-            Live Attendance
+            {t("attendance.liveAttendance")}
           </Text>
-          <Ionicons name="person-circle-outline" size={vh * 3} color={C.gold} />
         </View>
 
         <Controls />
@@ -524,7 +530,7 @@ export default function LiveAttendanceMonitoringScreen() {
               <View style={{ alignItems: "center", marginTop: vh * 10 }}>
                 <Ionicons name="people-outline" size={vh * 5} color={C.faint} />
                 <Text style={{ color: C.muted, fontSize: vh * 1.6, marginTop: vh * 1 }}>
-                  No attendance records
+                  {t("attendance.noAttendanceRecords")}
                 </Text>
               </View>
             )}
@@ -554,15 +560,18 @@ export default function LiveAttendanceMonitoringScreen() {
       {/* Header */}
       <View style={{
         flexDirection: "row",
-        justifyContent: "space-between",
+        justifyContent: "center",
         alignItems: "center",
         paddingHorizontal: vw * 4,
         marginTop: vh * 1,
         marginBottom: vh * 0.5,
+        minHeight: vh * 5,
       }}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={{
+            position: "absolute",
+            left: vw * 4,
             flexDirection: "row",
             alignItems: "center",
             gap: 6,
@@ -575,14 +584,12 @@ export default function LiveAttendanceMonitoringScreen() {
           }}
         >
           <Ionicons name="arrow-back" size={cvw * 2.2} color={C.gold} />
-          <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>Back</Text>
+          <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>{t("attendance.back")}</Text>
         </TouchableOpacity>
 
         <Text style={{ color: C.white, fontSize: cvw * 3, fontWeight: "800", letterSpacing: -0.3 }}>
-          Live Attendance Monitoring
+          {t("attendance.liveAttendanceMonitoring")}
         </Text>
-
-        <Ionicons name="person-circle-outline" size={cvw * 4} color={C.gold} />
       </View>
 
       {/* Controls — horizontal on tablet */}
@@ -635,7 +642,7 @@ export default function LiveAttendanceMonitoringScreen() {
               color: filter === item ? "#000" : C.muted,
               fontWeight: filter === item ? "700" : "500",
             }}>
-              {item}
+              {item === "all" ? t("attendance.overview") : item === "not_marked" ? t("attendance.notMarked") : t(`attendance.${item}`)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -655,7 +662,7 @@ export default function LiveAttendanceMonitoringScreen() {
         }}>
           <Ionicons name="people-outline" size={cvw * 2.2} color={C.gold} />
           <Text style={{ color: C.muted, fontSize: cvw * 2.2 }}>
-            Total: <Text style={{ color: C.gold, fontWeight: "700" }}>{total}</Text>
+            {t("attendance.totalStaff")}: <Text style={{ color: C.gold, fontWeight: "700" }}>{total}</Text>
           </Text>
         </View>
       </View>
@@ -687,7 +694,7 @@ export default function LiveAttendanceMonitoringScreen() {
             <View style={{ alignItems: "center", marginTop: vh * 10 }}>
               <Ionicons name="people-outline" size={vh * 5} color={C.faint} />
               <Text style={{ color: C.muted, fontSize: cvw * 2.4, marginTop: vh * 1 }}>
-                No attendance records
+                {t("attendance.noAttendanceRecords")}
               </Text>
             </View>
           )}

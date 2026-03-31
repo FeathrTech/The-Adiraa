@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { useAuthStore } from "../../store/authStore";
 import { fetchSiteById } from "../../api/siteApi";
@@ -157,6 +158,7 @@ function StatCard({ icon, label, value, color, borderColor, bgColor, cvw, isTabl
 
 // ─── Hall card (read-only) ────────────────────────────────────────────────────
 function HallCard({ hall, cvw, isTablet }) {
+    const { t } = useTranslation();
     return (
         <View style={{
             backgroundColor: C.card,
@@ -191,7 +193,7 @@ function HallCard({ hall, cvw, isTablet }) {
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                         <Ionicons name="people-outline" size={isTablet ? cvw * 1.8 : cvw * 3} color={C.muted} />
                         <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>
-                            Capacity:{" "}
+                            {t("venue.capacityLabel", "Capacity:")}{" "}
                             <Text style={{ color: C.goldLight, fontWeight: "600" }}>{hall.capacity}</Text>
                         </Text>
                     </View>
@@ -203,6 +205,7 @@ function HallCard({ hall, cvw, isTablet }) {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function VenueDetailsScreen({ route }) {
+    const { t } = useTranslation();
     const { siteId } = route.params;
     const navigation = useNavigation();
     const { vw, vh, cvw, isTablet } = useResponsive();
@@ -225,7 +228,7 @@ export default function VenueDetailsScreen({ route }) {
                 setSite(siteData);
                 setHalls(hallData);
             } catch (err) {
-                Alert.alert("Error", "Failed to load venue details");
+                Alert.alert(t("roles.error", "Error"), t("venue.failedToLoadDetails", "Failed to load venue details"));
                 console.log("VenueDetails load error:", err?.response?.data || err.message);
             } finally {
                 setLoading(false);
@@ -241,7 +244,7 @@ export default function VenueDetailsScreen({ route }) {
                 <StatusBar barStyle="light-content" />
                 <ActivityIndicator size="large" color={C.gold} />
                 <Text style={{ color: C.muted, marginTop: 12, letterSpacing: 1.5, fontSize: 13 }}>
-                    LOADING VENUE
+                    {t("venue.loadingVenue", "LOADING VENUE")}
                 </Text>
             </SafeAreaView>
         );
@@ -252,7 +255,7 @@ export default function VenueDetailsScreen({ route }) {
     const openMaps = () => {
         if (!hasLocation) return;
         const url = `https://maps.google.com/?q=${site.latitude},${site.longitude}`;
-        Linking.openURL(url).catch(() => Alert.alert("Could not open Maps"));
+        Linking.openURL(url).catch(() => Alert.alert(t("venue.couldNotOpenMaps", "Could not open Maps")));
     };
 
     const formattedDate = (iso) => {
@@ -276,7 +279,7 @@ export default function VenueDetailsScreen({ route }) {
             }}>
                 <StatCard
                     icon="grid-outline"
-                    label="Halls"
+                    label={t("venue.hallsLabel", "Halls")}
                     value={halls.length}
                     color={C.gold}
                     bgColor={C.goldDim}
@@ -286,7 +289,7 @@ export default function VenueDetailsScreen({ route }) {
                 />
                 <StatCard
                     icon="radio-button-on-outline"
-                    label="Radius (m)"
+                    label={t("venue.radiusLabel", "Radius (m)")}
                     value={site.allowedRadius ?? 100}
                     color={C.green}
                     bgColor={C.greenDim}
@@ -297,7 +300,7 @@ export default function VenueDetailsScreen({ route }) {
             </View>
 
             {/* ── SITE INFORMATION ── */}
-            <SectionHeader title="Site Information" icon="business-outline" cvw={cvw} isTablet={isTablet} />
+            <SectionHeader title={t("venue.siteInformation", "Site Information")} icon="business-outline" cvw={cvw} isTablet={isTablet} />
 
             <View style={{
                 backgroundColor: C.card,
@@ -308,33 +311,33 @@ export default function VenueDetailsScreen({ route }) {
             }}>
                 <InfoRow
                     icon="storefront-outline"
-                    label="Venue Name"
+                    label={t("venue.venueName", "Venue Name")}
                     value={site.name}
                     cvw={cvw} isTablet={isTablet}
                     accent={C.gold}
                 />
                 <InfoRow
                     icon="document-text-outline"
-                    label="Address / Description"
-                    value={site.address || "No address provided"}
+                    label={t("venue.addressDesc", "Address / Description")}
+                    value={site.address || t("venue.noAddressGiven", "No address provided")}
                     cvw={cvw} isTablet={isTablet}
                 />
                 <InfoRow
                     icon="calendar-outline"
-                    label="Created"
+                    label={t("venue.created", "Created")}
                     value={formattedDate(site.createdAt)}
                     cvw={cvw} isTablet={isTablet}
                 />
                 <InfoRow
                     icon="refresh-outline"
-                    label="Last Updated"
+                    label={t("venue.lastUpdated", "Last Updated")}
                     value={formattedDate(site.updatedAt)}
                     cvw={cvw} isTablet={isTablet}
                 />
             </View>
 
             {/* ── GPS LOCATION ── */}
-            <SectionHeader title="GPS Location" icon="location-outline" cvw={cvw} isTablet={isTablet} />
+            <SectionHeader title={t("venue.gpsLocation", "GPS Location")} icon="location-outline" cvw={cvw} isTablet={isTablet} />
 
             <View style={{
                 backgroundColor: hasLocation ? "rgba(93,190,138,0.08)" : C.card,
@@ -356,7 +359,7 @@ export default function VenueDetailsScreen({ route }) {
                         fontSize: isTablet ? cvw * 2 : cvw * 3.5,
                         letterSpacing: 0.5,
                     }}>
-                        {hasLocation ? "Location Set" : "No Location Data"}
+                        {hasLocation ? t("venue.locationSet", "Location Set") : t("venue.noLocationData", "No Location Data")}
                     </Text>
                 </View>
 
@@ -368,7 +371,7 @@ export default function VenueDetailsScreen({ route }) {
                                 padding: isTablet ? cvw * 1.5 : cvw * 3,
                             }}>
                                 <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.6 : cvw * 2.8, marginBottom: 3 }}>
-                                    Latitude
+                                    {t("venue.latitude", "Latitude")}
                                 </Text>
                                 <Text style={{
                                     color: C.white, fontWeight: "600",
@@ -383,7 +386,7 @@ export default function VenueDetailsScreen({ route }) {
                                 padding: isTablet ? cvw * 1.5 : cvw * 3,
                             }}>
                                 <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.6 : cvw * 2.8, marginBottom: 3 }}>
-                                    Longitude
+                                    {t("venue.longitude", "Longitude")}
                                 </Text>
                                 <Text style={{
                                     color: C.white, fontWeight: "600",
@@ -413,7 +416,7 @@ export default function VenueDetailsScreen({ route }) {
                                 color: C.green, fontWeight: "700",
                                 fontSize: isTablet ? cvw * 2 : cvw * 3.5,
                             }}>
-                                Open in Google Maps
+                                {t("venue.openInMaps", "Open in Google Maps")}
                             </Text>
                         </TouchableOpacity>
                     </>
@@ -421,7 +424,7 @@ export default function VenueDetailsScreen({ route }) {
             </View>
 
             {/* ── HALLS ── */}
-            <SectionHeader title={`Halls (${halls.length})`} icon="grid-outline" cvw={cvw} isTablet={isTablet} />
+            <SectionHeader title={t("venue.hallsCount", "Halls ({{count}})", { count: halls.length })} icon="grid-outline" cvw={cvw} isTablet={isTablet} />
 
             {halls.length === 0 ? (
                 <View style={{
@@ -433,7 +436,7 @@ export default function VenueDetailsScreen({ route }) {
                 }}>
                     <Ionicons name="grid-outline" size={isTablet ? cvw * 5 : cvw * 10} color={C.faint} />
                     <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.5, textAlign: "center" }}>
-                        No halls have been added to this venue yet
+                        {t("venue.noHallsAddedStatus", "No halls have been added to this venue yet")}
                     </Text>
                 </View>
             ) : isTablet ? (
@@ -483,7 +486,7 @@ export default function VenueDetailsScreen({ route }) {
             >
                 <Ionicons name="arrow-back" size={isTablet ? cvw * 2.2 : 18} color={C.gold} />
                 {isTablet && (
-                    <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>Back</Text>
+                    <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>{t("settings.cancel", "Back")}</Text>
                 )}
             </TouchableOpacity>
 
@@ -494,7 +497,7 @@ export default function VenueDetailsScreen({ route }) {
                     letterSpacing: 3, fontWeight: "700",
                     textTransform: "uppercase", marginBottom: 2,
                 }}>
-                    Venue Management
+                    {t("venue.venueManagement", "Venue Management")}
                 </Text>
                 <Text
                     numberOfLines={1}
@@ -522,7 +525,7 @@ export default function VenueDetailsScreen({ route }) {
                 >
                     <Ionicons name="pencil-outline" size={isTablet ? cvw * 2.2 : cvw * 4.5} color="#000" />
                     <Text style={{ color: "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.2 : cvw * 3.5 }}>
-                        Edit
+                        {t("roles.edit", "Edit")}
                     </Text>
                 </TouchableOpacity>
             )}

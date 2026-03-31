@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   StatusBar,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,6 +22,8 @@ import {
   uploadOwnProfilePhoto,
   uploadOwnIdProof,
 } from "../../api/userApi";
+import { useTranslation } from "react-i18next";
+import LanguageToggle from "../../components/LanguageToggle";
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 const C = {
@@ -109,7 +112,7 @@ function ClockWidget({ cvw, vh, isTablet }) {
       <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
         <Text style={{
           color: C.white,
-          fontSize: isTablet ? cvw * 7 : cvw * 13,
+          fontSize: isTablet ? cvw * 7 : cvw * 10,
           fontWeight: "700", letterSpacing: -1,
           fontVariant: ["tabular-nums"],
         }}>
@@ -149,8 +152,11 @@ function SelfUploadCard({
   uploading,
   onPickPhoto,
   onPickIdProof,
+  profilePhotoPreview,   // 👈 ADD
+  idProofPreview,
   cvw, vh, isTablet,
 }) {
+  const { t } = useTranslation();
   return (
     <View style={{
       backgroundColor: C.card,
@@ -168,7 +174,7 @@ function SelfUploadCard({
         fontWeight: "600",
         textTransform: "uppercase",
       }}>
-        My Documents
+        {t("dashboard.myDocuments")}
       </Text>
 
       {/* Profile photo row */}
@@ -198,25 +204,32 @@ function SelfUploadCard({
             borderWidth: 1, borderColor: C.borderGold,
             alignItems: "center", justifyContent: "center",
           }}>
-            <Ionicons
-              name="camera-outline"
-              size={isTablet ? cvw * 2.4 : cvw * 5}
-              color={C.gold}
-            />
+            {profilePhotoPreview ? (
+              <Image
+                source={{ uri: profilePhotoPreview }}
+                style={{ width: "100%", height: "100%" }}
+              />
+            ) : (
+              <Ionicons
+                name="camera-outline"
+                size={isTablet ? cvw * 2.4 : cvw * 5}
+                color={C.gold}
+              />
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{
               color: C.white, fontWeight: "700",
               fontSize: isTablet ? cvw * 2.2 : cvw * 3.8,
             }}>
-              Upload Profile Photo
+              {t("dashboard.uploadProfilePhoto")}
             </Text>
             <Text style={{
               color: C.muted,
               fontSize: isTablet ? cvw * 1.7 : cvw * 3,
               marginTop: 2,
             }}>
-              Camera or gallery — JPEG
+              {t("dashboard.cameraOrGallery")}
             </Text>
           </View>
           {uploading
@@ -253,25 +266,32 @@ function SelfUploadCard({
             borderWidth: 1, borderColor: C.borderGold,
             alignItems: "center", justifyContent: "center",
           }}>
-            <Ionicons
-              name="id-card-outline"
-              size={isTablet ? cvw * 2.4 : cvw * 5}
-              color={C.gold}
-            />
+            {idProofPreview ? (
+              <Image
+                source={{ uri: idProofPreview }}
+                style={{ width: "100%", height: "100%" }}
+              />
+            ) : (
+              <Ionicons
+                name="id-card-outline"
+                size={isTablet ? cvw * 2.4 : cvw * 5}
+                color={C.gold}
+              />
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{
               color: C.white, fontWeight: "700",
               fontSize: isTablet ? cvw * 2.2 : cvw * 3.8,
             }}>
-              Upload ID Proof
+              {t("dashboard.uploadIdProof")}
             </Text>
             <Text style={{
               color: C.muted,
               fontSize: isTablet ? cvw * 1.7 : cvw * 3,
               marginTop: 2,
             }}>
-              Image or PDF document
+              {t("dashboard.imageOrPdf")}
             </Text>
           </View>
           {uploading
@@ -286,9 +306,12 @@ function SelfUploadCard({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function DashboardScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { user, logout, setUser } = useAuthStore();
   const { vw, vh, cvw, isTablet } = useResponsive();
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState(null);
+  const [idProofPreview, setIdProofPreview] = useState(null);
 
   // ── Permissions ────────────────────────────────────────────────────────────
   const permissions =
@@ -313,6 +336,7 @@ export default function DashboardScreen() {
   const [liveAttendanceCount, setLiveAttendanceCount] = useState(0);
   const [uploading, setUploading] = useState(false);
 
+
   // ── Realtime ───────────────────────────────────────────────────────────────
   useRealtime("attendance_live_update", (data) => {
     if (data?.count !== undefined) setLiveAttendanceCount(data.count);
@@ -335,6 +359,15 @@ export default function DashboardScreen() {
   };
 
   useEffect(() => { loadLiveAttendance(); }, []);
+  useEffect(() => {
+    if (user?.profilePhotoUrl) {
+      setProfilePhotoPreview(user.profilePhotoUrl);
+    }
+
+    if (user?.idProofUrl && !user.idProofUrl.endsWith(".pdf")) {
+      setIdProofPreview(user.idProofUrl);
+    }
+  }, [user]);
 
   // ── Upload handlers ────────────────────────────────────────────────────────
   const doUploadPhoto = async (asset) => {
@@ -346,7 +379,9 @@ export default function DashboardScreen() {
       console.log("--- API call done, updatedUser:", !!updatedUser);
 
       console.log("--- calling setUser ---");
-      if (updatedUser) await setUser(updatedUser);
+      if (updatedUser?.profilePhotoUrl) {
+        setProfilePhotoPreview(updatedUser.profilePhotoUrl);
+      }
       console.log("--- setUser done ---");
 
       Alert.alert("Success", "Profile photo updated");
@@ -366,7 +401,9 @@ export default function DashboardScreen() {
     try {
       setUploading(true);
       const updatedUser = await uploadOwnIdProof(asset);
-      if (updatedUser) setUser(updatedUser);
+      if (updatedUser?.idProofUrl && !updatedUser.idProofUrl.endsWith(".pdf")) {
+        setIdProofPreview(updatedUser.idProofUrl);
+      }
       Alert.alert("Success", "ID proof uploaded");
     } catch (e) {
       Alert.alert("Error", e.response?.data?.message || "Upload failed");
@@ -384,7 +421,12 @@ export default function DashboardScreen() {
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             quality: 0.6,
           });
-          if (!r.canceled) await doUploadPhoto(r.assets[0]);
+          if (!r.canceled) {
+            const asset = r.assets[0];
+
+            setProfilePhotoPreview(asset.uri); // 👈 ADD THIS
+            await doUploadPhoto(asset);
+          }
         },
       },
       {
@@ -394,7 +436,12 @@ export default function DashboardScreen() {
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             quality: 0.6,
           });
-          if (!r.canceled) await doUploadPhoto(r.assets[0]);
+          if (!r.canceled) {
+            const asset = r.assets[0];
+
+            setProfilePhotoPreview(asset.uri); // 👈 ADD THIS
+            await doUploadPhoto(asset);
+          }
         },
       },
       { text: "Cancel", style: "cancel" },
@@ -409,7 +456,15 @@ export default function DashboardScreen() {
           const r = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
           });
-          if (!r.canceled) await doUploadIdProof(r.assets[0]);
+          if (!r.canceled) {
+            const asset = r.assets[0];
+
+            if (!asset.name?.endsWith(".pdf")) {
+              setIdProofPreview(asset.uri); // 👈 only for image
+            }
+
+            await doUploadIdProof(asset);
+          }
         },
       },
       {
@@ -418,7 +473,15 @@ export default function DashboardScreen() {
           const r = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
           });
-          if (!r.canceled) await doUploadIdProof(r.assets[0]);
+          if (!r.canceled) {
+            const asset = r.assets[0];
+
+            if (!asset.name?.endsWith(".pdf")) {
+              setIdProofPreview(asset.uri); // 👈 only for image
+            }
+
+            await doUploadIdProof(asset);
+          }
         },
       },
       {
@@ -427,7 +490,15 @@ export default function DashboardScreen() {
           const r = await DocumentPicker.getDocumentAsync({
             type: ["image/*", "application/pdf"],
           });
-          if (!r.canceled) await doUploadIdProof(r.assets[0]);
+          if (!r.canceled) {
+            const asset = r.assets[0];
+
+            if (!asset.name?.endsWith(".pdf")) {
+              setIdProofPreview(asset.uri); // 👈 only for image
+            }
+
+            await doUploadIdProof(asset);
+          }
         },
       },
       { text: "Cancel", style: "cancel" },
@@ -527,18 +598,18 @@ export default function DashboardScreen() {
   const CardList = () => (
     <>
       <Card
-        title="Booking Calendar"
+        title={t("dashboard.bookingCalendar")}
         permissionKey="event.view_all"
         onPress={() => navigation.navigate("EventCalendar")}
       />
       <Card
-        title="Attendance"
+        title={t("dashboard.attendance")}
         permissionKey="attendance.view.dashboard_summary"
         onPress={() => navigation.navigate("Attendance")}
         badge={liveAttendanceCount}
       />
       <Card
-        title="Venue"
+        title={t("dashboard.venue")}
         permissionKey="site.view"
         onPress={() => navigation.navigate("Venue")}
       />
@@ -568,28 +639,31 @@ export default function DashboardScreen() {
                 color: C.gold, fontSize: cvw * 2.6, letterSpacing: 3,
                 fontWeight: "700", textTransform: "uppercase", marginBottom: 5,
               }}>
-                Admin Portal
+                {t("dashboard.adminPortal")}
               </Text>
               <Text style={{
                 color: C.white, fontSize: cvw * 6.5,
                 fontWeight: "800", letterSpacing: -0.5,
               }}>
-                Dashboard
+                {t("dashboard.dashboard")}
               </Text>
             </View>
 
-            {canAccessSettings && (
-              <TouchableOpacity
-                onPress={() => navigation.navigate("Settings")}
-                style={{
-                  width: cvw * 11, height: cvw * 11, borderRadius: cvw * 5.5,
-                  backgroundColor: C.card, borderWidth: 1, borderColor: C.borderGold,
-                  alignItems: "center", justifyContent: "center", marginTop: 4,
-                }}
-              >
-                <Ionicons name="settings-outline" size={cvw * 5} color={C.gold} />
-              </TouchableOpacity>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <LanguageToggle />
+              {canAccessSettings && (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("Settings")}
+                  style={{
+                    width: cvw * 11, height: cvw * 11, borderRadius: cvw * 5.5,
+                    backgroundColor: C.card, borderWidth: 1, borderColor: C.borderGold,
+                    alignItems: "center", justifyContent: "center", marginTop: 4,
+                  }}
+                >
+                  <Ionicons name="settings-outline" size={cvw * 5} color={C.gold} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
           {/* Divider */}
@@ -612,6 +686,8 @@ export default function DashboardScreen() {
                 uploading={uploading}
                 onPickPhoto={pickAndUploadPhoto}
                 onPickIdProof={pickAndUploadIdProof}
+                profilePhotoPreview={profilePhotoPreview}   // 👈 ADD
+                idProofPreview={idProofPreview}
                 cvw={cvw} vh={vh} isTablet={isTablet}
               />
             </View>
@@ -631,7 +707,7 @@ export default function DashboardScreen() {
               color: "#E57373", fontWeight: "700",
               fontSize: cvw * 3.8, letterSpacing: 1.5, textTransform: "uppercase",
             }}>
-              Sign Out
+              {t("dashboard.signOut")}
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -661,34 +737,37 @@ export default function DashboardScreen() {
               color: C.gold, fontSize: cvw * 2.2, letterSpacing: 3,
               fontWeight: "700", textTransform: "uppercase", marginBottom: 5,
             }}>
-              Admin Portal
+              {t("dashboard.adminPortal")}
             </Text>
             <Text style={{
               color: C.white, fontSize: cvw * 5,
               fontWeight: "800", letterSpacing: -0.5,
             }}>
-              Dashboard ✦
+              {t("dashboard.dashboard")}
             </Text>
           </View>
 
-          {canAccessSettings && (
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Settings")}
-              style={{
-                flexDirection: "row", alignItems: "center", gap: 8,
-                backgroundColor: C.card, borderWidth: 1, borderColor: C.borderGold,
-                paddingHorizontal: cvw * 3, paddingVertical: vh * 1, borderRadius: 12,
-              }}
-            >
-              <Ionicons name="settings-outline" size={cvw * 2.2} color={C.gold} />
-              <Text style={{
-                color: C.gold, fontWeight: "700",
-                fontSize: cvw * 2.2, letterSpacing: 0.5,
-              }}>
-                Settings
-              </Text>
-            </TouchableOpacity>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+            <LanguageToggle />
+            {canAccessSettings && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate("Settings")}
+                style={{
+                  flexDirection: "row", alignItems: "center", gap: 8,
+                  backgroundColor: C.card, borderWidth: 1, borderColor: C.borderGold,
+                  paddingHorizontal: cvw * 3, paddingVertical: vh * 1, borderRadius: 12,
+                }}
+              >
+                <Ionicons name="settings-outline" size={cvw * 2.2} color={C.gold} />
+                <Text style={{
+                  color: C.gold, fontWeight: "700",
+                  fontSize: cvw * 2.2, letterSpacing: 0.5,
+                }}>
+                  {t("dashboard.settings")}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Divider */}
@@ -718,6 +797,8 @@ export default function DashboardScreen() {
               uploading={uploading}
               onPickPhoto={pickAndUploadPhoto}
               onPickIdProof={pickAndUploadIdProof}
+              profilePhotoPreview={profilePhotoPreview}   // 👈 ADD
+              idProofPreview={idProofPreview}
               cvw={cvw} vh={vh} isTablet={isTablet}
             />
           </View>
@@ -737,7 +818,7 @@ export default function DashboardScreen() {
             color: "#E57373", fontWeight: "700",
             fontSize: cvw * 2.8, letterSpacing: 1.5, textTransform: "uppercase",
           }}>
-            Sign Out
+            {t("dashboard.signOut")}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -747,21 +828,22 @@ export default function DashboardScreen() {
 
 // ─── Tablet 2-column card grid ────────────────────────────────────────────────
 function TabletCardGrid({ can, liveAttendanceCount, navigation, cvw, vh }) {
+  const { t } = useTranslation();
   const allCards = [
     can("event.view_all") && {
       key: "booking",
-      title: "Booking Calendar",
+      title: t("dashboard.bookingCalendar"),
       onPress: () => navigation.navigate("EventCalendar"),
     },
     can("attendance.view.dashboard_summary") && {
       key: "attendance",
-      title: "Attendance",
+      title: t("dashboard.attendance"),
       badge: liveAttendanceCount,
       onPress: () => navigation.navigate("Attendance"),
     },
     can("site.view") && {
       key: "venue",
-      title: "Venue",
+      title: t("dashboard.venue"),
       onPress: () => navigation.navigate("Venue"),
     },
   ].filter(Boolean);

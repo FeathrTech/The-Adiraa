@@ -1,4 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../store/authStore";
 import { can } from "../../config/permissionMap";
 
@@ -39,6 +40,7 @@ const C = {
 
 // ─── No Access Screen ─────────────────────────────────────────────────────────
 function NoAccessScreen() {
+  const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const isTablet = width >= 768;
   const vw = width / 100;
@@ -49,10 +51,10 @@ function NoAccessScreen() {
   const logoSize = isTablet ? cardWidth * 0.28 : cardWidth * 0.32;
 
   const handleLogout = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel" },
+    Alert.alert(t("auth.signOut", "Sign Out"), t("roles.signOutAsk", "Are you sure you want to sign out?"), [
+      { text: t("settings.cancel", "Cancel") },
       {
-        text: "Sign Out",
+        text: t("auth.signOut", "Sign Out"),
         style: "destructive",
         onPress: async () => await logout(),
       },
@@ -167,7 +169,7 @@ function NoAccessScreen() {
             letterSpacing: 0.3,
             marginBottom: vh * 1.2,
           }}>
-            No Access
+            {t("roles.noPermission", "No Access")}
           </Text>
 
           {/* Subtext */}
@@ -178,8 +180,7 @@ function NoAccessScreen() {
             lineHeight: isTablet ? 24 : 20,
             marginBottom: vh * 3.5,
           }}>
-            Your account doesn't have access to any dashboard.{"\n"}
-            Please contact your admin to get the required permissions.
+            {t("roles.noDashboardAccess", "Your account doesn't have access to any dashboard.\nPlease contact your admin to get the required permissions.")}
           </Text>
 
           {/* Divider */}
@@ -209,7 +210,7 @@ function NoAccessScreen() {
               fontSize: isTablet ? 16 : 14,
               letterSpacing: 0.4,
             }}>
-              Sign Out
+              {t("auth.signOut", "Sign Out")}
             </Text>
           </TouchableOpacity>
         </View>

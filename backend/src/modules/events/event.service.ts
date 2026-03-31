@@ -30,7 +30,6 @@ export class EventsService {
   */
 
   async create(data: Partial<Event>, tenantId: string) {
-
     if (!data.location || !(data.location as any).id) {
       throw new ConflictException('locationId is required');
     }
@@ -59,29 +58,7 @@ export class EventsService {
       );
     }
 
-    // If incoming event is BOOKED, also block if any other BOOKED exists
-    // (redundant with above but keeps intent explicit)
-    // Additionally block if incoming is BOOKED and an in_talks exists
-    // — caller should convert the in_talks to booked instead of creating new
-    if (data.status === EventStatus.BOOKED) {
-      const inTalksExists = await this.eventRepo.findOne({
-        where: {
-          tenant: { id: tenantId },
-          location: { id: locationId },
-          date: data.date,
-          eventSlot: data.eventSlot,
-          hallName: data.hallName,
-          status: EventStatus.IN_TALKS,
-        },
-      });
-
-      if (inTalksExists) {
-        throw new ConflictException(
-          `An in-talks entry already exists for ${data.hallName} ${data.eventSlot} on this date. ` +
-          `Please convert the existing entry to booked instead of creating a new one.`,
-        );
-      }
-    }
+    // ← DELETE the entire in_talks check block that was here
 
     const event = this.eventRepo.create({
       ...data,

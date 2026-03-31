@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import api from "../../api/axios";
 
@@ -29,6 +30,8 @@ export default function EditAttendanceRecordScreen() {
 
     const GOLD = "#C9A227";
     const DARK = "#111";
+
+    const { t } = useTranslation();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -66,7 +69,7 @@ export default function EditAttendanceRecordScreen() {
             );
 
         } catch {
-            Alert.alert("Error", "Unable to load attendance");
+            Alert.alert(t("attendance.error"), t("attendance.unableToLoad"));
         } finally {
             setLoading(false);
         }
@@ -107,14 +110,14 @@ export default function EditAttendanceRecordScreen() {
 
             }
 
-            Alert.alert("Success", "Attendance updated");
+            Alert.alert(t("attendance.success"), t("attendance.attendanceUpdated"));
             navigation.goBack();
 
         } catch (err) {
 
             Alert.alert(
-                "Error",
-                err.response?.data?.message || "Update failed"
+                t("attendance.error"),
+                err.response?.data?.message || t("attendance.updateFailed")
             );
 
         } finally {
@@ -142,7 +145,7 @@ export default function EditAttendanceRecordScreen() {
                     color: GOLD,
                     marginBottom: vh * 3
                 }}>
-                    Edit Attendance
+                    {t("attendance.editAttendance")}
                 </Text>
 
                 {/* STAFF CARD */}
@@ -157,7 +160,7 @@ export default function EditAttendanceRecordScreen() {
                 }}>
 
                     <Text style={{ color: GOLD, fontWeight: "600" }}>
-                        Staff
+                        {t("attendance.staff")}
                     </Text>
 
                     <Text style={{ color: "white", marginTop: 4 }}>
@@ -179,13 +182,13 @@ export default function EditAttendanceRecordScreen() {
                 }}>
 
                     <Text style={{ color: GOLD, marginBottom: 8 }}>
-                        Check-in Time
+                        {t("attendance.checkInTime")}
                     </Text>
 
                     <TextInput
                         value={checkInTime}
                         onChangeText={setCheckInTime}
-                        placeholder="HH:MM"
+                        placeholder={t("attendance.hhmm")}
                         placeholderTextColor="#888"
                         style={{
                             backgroundColor: DARK,
@@ -212,13 +215,13 @@ export default function EditAttendanceRecordScreen() {
                 }}>
 
                     <Text style={{ color: GOLD, marginBottom: 8 }}>
-                        Check-out Time
+                        {t("attendance.checkOutTime")}
                     </Text>
 
                     <TextInput
                         value={checkOutTime}
                         onChangeText={setCheckOutTime}
-                        placeholder="HH:MM"
+                        placeholder={t("attendance.hhmm")}
                         placeholderTextColor="#888"
                         style={{
                             backgroundColor: DARK,
@@ -248,7 +251,7 @@ export default function EditAttendanceRecordScreen() {
                 }}>
 
                     <Text style={{ color: "white", fontWeight: "500" }}>
-                        Mark Absent
+                        {t("attendance.markAbsent")}
                     </Text>
 
                     <Switch
@@ -281,7 +284,7 @@ export default function EditAttendanceRecordScreen() {
                             fontWeight: "600",
                             fontSize: vh * 1.8
                         }}>
-                            Save Changes
+                            {t("attendance.saveChanges")}
                         </Text>
                     )}
 

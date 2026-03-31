@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../store/authStore";
 import { useSiteStore } from "../../store/siteStore";
 import { createSite } from "../../api/siteApi";
@@ -140,6 +141,7 @@ function StyledInput({
 
 // ─── Screen header ────────────────────────────────────────────────────────────
 function ScreenHeader({ onBack, cvw, isTablet }) {
+  const { t } = useTranslation();
   return (
     <View style={{
       flexDirection: "row", alignItems: "center",
@@ -159,7 +161,7 @@ function ScreenHeader({ onBack, cvw, isTablet }) {
       >
         <Ionicons name="arrow-back" size={isTablet ? cvw * 2.2 : 18} color={C.gold} />
         {isTablet && (
-          <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>Back</Text>
+          <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>{t("settings.cancel", "Back")}</Text>
         )}
       </TouchableOpacity>
       <View>
@@ -167,13 +169,13 @@ function ScreenHeader({ onBack, cvw, isTablet }) {
           color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8,
           letterSpacing: 3, fontWeight: "700", textTransform: "uppercase", marginBottom: 2,
         }}>
-          Venue Management
+          {t("venue.venueManagement", "Venue Management")}
         </Text>
         <Text style={{
           color: C.white, fontSize: isTablet ? cvw * 3.5 : cvw * 5.5,
           fontWeight: "800", letterSpacing: -0.3,
         }}>
-          Create Site
+          {t("venue.createSite", "Create Site")}
         </Text>
       </View>
     </View>
@@ -220,6 +222,7 @@ function FormContent({
   loadingLocation, onFetchLocation,
   saving, onSave,
 }) {
+  const { t } = useTranslation();
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -227,18 +230,18 @@ function FormContent({
       keyboardShouldPersistTaps="handled"
     >
       {/* ── SITE INFO ── */}
-      <SectionHeader title="Site Information" icon="business-outline" cvw={cvw} isTablet={isTablet} />
+      <SectionHeader title={t("venue.siteInformation", "Site Information")} icon="business-outline" cvw={cvw} isTablet={isTablet} />
 
       <FieldLabel
         icon="storefront-outline"
-        label="Banquet Name"
-        hint={`2–${LIMITS.name.max} characters`}
+        label={t("venue.banquetName", "Banquet Name")}
+        hint={t("venue.nameHint", "2–{{max}} characters", { max: LIMITS.name.max })}
         cvw={cvw} isTablet={isTablet}
       />
       <StyledInput
         value={name}
         onChangeText={setName}
-        placeholder="e.g. The Grand Pavilion, Rose Banquet Hall"
+        placeholder={t("venue.namePlaceholder", "e.g. The Grand Pavilion, Rose Banquet Hall")}
         maxLength={LIMITS.name.max}
         showCount
         cvw={cvw} isTablet={isTablet}
@@ -252,20 +255,20 @@ function FormContent({
           marginBottom: isTablet ? cvw * 1 : cvw * 2,
           marginLeft: 2,
         }}>
-          Name must be at least {LIMITS.name.min} characters
+          {t("venue.nameMin", "Name must be at least {{min}} characters", { min: LIMITS.name.min })}
         </Text>
       )}
 
       <FieldLabel
         icon="document-text-outline"
-        label="Description"
-        hint="Address, facilities, or any notes about this site"
+        label={t("staff.description", "Description")}
+        hint={t("venue.descHint", "Address, facilities, or any notes about this site")}
         cvw={cvw} isTablet={isTablet}
       />
       <StyledInput
         value={description}
         onChangeText={setDescription}
-        placeholder="e.g. Located on 5th Avenue, capacity 500, includes outdoor garden area..."
+        placeholder={t("venue.descPlaceholder", "e.g. Located on 5th Avenue, capacity 500, includes outdoor garden area...")}
         multiline
         maxLength={LIMITS.description.max}
         showCount
@@ -273,14 +276,14 @@ function FormContent({
       />
 
       {/* ── GPS LOCATION ── */}
-      <SectionHeader title="GPS Location" icon="location-outline" cvw={cvw} isTablet={isTablet} />
+      <SectionHeader title={t("venue.gpsLocation", "GPS Location")} icon="location-outline" cvw={cvw} isTablet={isTablet} />
 
       <View style={{ flexDirection: "row", gap: cvw * 3 }}>
         <View style={{ flex: 1 }}>
           <FieldLabel
             icon="navigate-circle-outline"
-            label="Latitude"
-            hint="e.g. 28.6139"
+            label={t("venue.latitude", "Latitude")}
+            hint={t("venue.latHint", "e.g. 28.6139")}
             cvw={cvw} isTablet={isTablet}
           />
           <StyledInput
@@ -295,8 +298,8 @@ function FormContent({
         <View style={{ flex: 1 }}>
           <FieldLabel
             icon="compass-outline"
-            label="Longitude"
-            hint="e.g. 77.2090"
+            label={t("venue.longitude", "Longitude")}
+            hint={t("venue.lngHint", "e.g. 77.2090")}
             cvw={cvw} isTablet={isTablet}
           />
           <StyledInput
@@ -331,8 +334,8 @@ function FormContent({
           fontWeight: "600", flex: 1,
         }}>
           {hasLocation
-            ? `Location set: ${parseFloat(latitude).toFixed(5)}, ${parseFloat(longitude).toFixed(5)}`
-            : "No location set — fill in manually or use Auto Fetch below"}
+            ? t("venue.locationSet", "Location set: {{lat}}, {{lng}}", { lat: parseFloat(latitude).toFixed(5), lng: parseFloat(longitude).toFixed(5) })
+            : t("venue.noLocationSet", "No location set — fill in manually or use Auto Fetch below")}
         </Text>
       </View>
 
@@ -361,12 +364,12 @@ function FormContent({
           color: loadingLocation ? C.muted : C.gold,
           fontWeight: "700", fontSize: isTablet ? cvw * 2.4 : cvw * 3.8, letterSpacing: 0.3,
         }}>
-          {loadingLocation ? "Fetching Location…" : "Auto Fetch Live Location"}
+          {loadingLocation ? t("venue.fetchingLocation", "Fetching Location…") : t("venue.autoFetchLocation", "Auto Fetch Live Location")}
         </Text>
       </TouchableOpacity>
 
       {/* ── HALLS ── */}
-      <SectionHeader title="Halls" icon="grid-outline" cvw={cvw} isTablet={isTablet} />
+      <SectionHeader title={t("venue.halls", "Halls")} icon="grid-outline" cvw={cvw} isTablet={isTablet} />
       <View style={{
         backgroundColor: C.card, borderWidth: 1, borderColor: C.border,
         borderRadius: 14,
@@ -384,10 +387,10 @@ function FormContent({
           <Ionicons name="grid-outline" size={isTablet ? cvw * 4 : cvw * 8} color={C.muted} />
         </View>
         <Text style={{ color: C.white, fontWeight: "700", fontSize: isTablet ? cvw * 2.4 : cvw * 4 }}>
-          No Halls Added Yet
+          {t("venue.noHallsAdded", "No Halls Added Yet")}
         </Text>
         <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2, textAlign: "center" }}>
-          Save this site first, then add individual halls from the venue detail screen.
+          {t("venue.saveSiteFirst", "Save this site first, then add individual halls from the venue detail screen.")}
         </Text>
       </View>
 
@@ -411,14 +414,14 @@ function FormContent({
           <>
             <ActivityIndicator color="#000" size="small" />
             <Text style={{ color: C.muted, fontWeight: "700", fontSize: isTablet ? cvw * 2.6 : cvw * 4, letterSpacing: 0.3 }}>
-              Creating Site…
+              {t("venue.creatingSite", "Creating Site…")}
             </Text>
           </>
         ) : (
           <>
             <Ionicons name="checkmark-circle-outline" size={isTablet ? cvw * 2.6 : cvw * 5} color="#000" />
             <Text style={{ color: "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.6 : cvw * 4, letterSpacing: 0.3, textTransform: "uppercase" }}>
-              Create Site
+              {t("venue.createSiteButton", "Create Site")}
             </Text>
           </>
         )}
@@ -429,6 +432,7 @@ function FormContent({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function SiteDetailsScreen({ navigation }) {
+  const { t } = useTranslation();
   const { vw, vh, cvw, isTablet } = useResponsive();
 
   const permissions = useAuthStore((s) => s.permissions) || [];
@@ -447,7 +451,7 @@ export default function SiteDetailsScreen({ navigation }) {
       <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: C.bg }}>
         <StatusBar barStyle="light-content" />
         <Ionicons name="lock-closed-outline" size={48} color={C.faint} />
-        <Text style={{ color: C.muted, marginTop: 12, fontSize: 15 }}>No Permission</Text>
+        <Text style={{ color: C.muted, marginTop: 12, fontSize: 15 }}>{t("roles.noPermission", "No Permission")}</Text>
       </SafeAreaView>
     );
   }
@@ -457,14 +461,14 @@ export default function SiteDetailsScreen({ navigation }) {
       setLoadingLocation(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Location permission denied");
+        Alert.alert(t("roles.error", "Error"), t("venue.locationDenied", "Location permission denied"));
         return;
       }
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setLatitude(location.coords.latitude.toString());
       setLongitude(location.coords.longitude.toString());
     } catch {
-      Alert.alert("Failed to fetch location");
+      Alert.alert(t("roles.error", "Error"), t("venue.locationFailed", "Failed to fetch location"));
     } finally {
       setLoadingLocation(false);
     }
@@ -472,21 +476,21 @@ export default function SiteDetailsScreen({ navigation }) {
 
   const handleSave = async () => {
     if (saving) return;
-    if (!name.trim()) { Alert.alert("Validation", "Banquet name is required"); return; }
+    if (!name.trim()) { Alert.alert(t("roles.validationError", "Validation Error"), t("venue.nameReq", "Banquet name is required")); return; }
     if (name.trim().length < LIMITS.name.min) {
-      Alert.alert("Validation", `Name must be at least ${LIMITS.name.min} characters`);
+      Alert.alert(t("roles.validationError", "Validation Error"), t("venue.nameMin", "Name must be at least {{min}} characters", { min: LIMITS.name.min }));
       return;
     }
-    if (!latitude || !longitude) { Alert.alert("Validation", "Location is required"); return; }
+    if (!latitude || !longitude) { Alert.alert(t("roles.validationError", "Validation Error"), t("venue.locationReq", "Location is required")); return; }
     // Basic coordinate range check
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
     if (isNaN(lat) || lat < -90 || lat > 90) {
-      Alert.alert("Validation", "Latitude must be between -90 and 90");
+      Alert.alert(t("roles.validationError", "Validation Error"), t("venue.latRange", "Latitude must be between -90 and 90"));
       return;
     }
     if (isNaN(lng) || lng < -180 || lng > 180) {
-      Alert.alert("Validation", "Longitude must be between -180 and 180");
+      Alert.alert(t("roles.validationError", "Validation Error"), t("venue.lngRange", "Longitude must be between -180 and 180"));
       return;
     }
     try {
@@ -495,7 +499,7 @@ export default function SiteDetailsScreen({ navigation }) {
       addSite(savedSite);
       navigation.goBack();
     } catch (error) {
-      Alert.alert("Error", error?.response?.data?.message || "Failed to create site");
+      Alert.alert(t("roles.error", "Error"), error?.response?.data?.message || t("venue.failedToCreate", "Failed to create site"));
     } finally {
       setSaving(false);
     }

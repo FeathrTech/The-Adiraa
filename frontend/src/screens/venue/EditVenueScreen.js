@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import * as Location from "expo-location";
+import { useTranslation } from "react-i18next";
 
 import { useAuthStore } from "../../store/authStore";
 import { fetchSiteById, updateSite } from "../../api/siteApi";
@@ -182,6 +183,7 @@ function SectionHeader({ title, icon, cvw, isTablet }) {
 
 // ─── Hall card ────────────────────────────────────────────────────────────────
 function HallCard({ hall, onEdit, onDelete, cvw, isTablet }) {
+  const { t } = useTranslation();
   return (
     <View style={{
       backgroundColor: C.card, borderRadius: 16,
@@ -214,7 +216,7 @@ function HallCard({ hall, onEdit, onDelete, cvw, isTablet }) {
               <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                 <Ionicons name="people-outline" size={isTablet ? cvw * 1.8 : cvw * 3} color={C.muted} />
                 <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
-                  Capacity: <Text style={{ color: C.goldLight, fontWeight: "600" }}>{hall.capacity}</Text>
+                  {t("venue.capacityLabel", "Capacity:")} <Text style={{ color: C.goldLight, fontWeight: "600" }}>{hall.capacity}</Text>
                 </Text>
               </View>
             ) : null}
@@ -232,7 +234,7 @@ function HallCard({ hall, onEdit, onDelete, cvw, isTablet }) {
             }}
           >
             <Ionicons name="pencil-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.gold} />
-            <Text style={{ color: C.gold, fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3 }}>Edit</Text>
+            <Text style={{ color: C.gold, fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3 }}>{t("roles.edit", "Edit")}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => onDelete(hall.id)}
@@ -245,7 +247,7 @@ function HallCard({ hall, onEdit, onDelete, cvw, isTablet }) {
             }}
           >
             <Ionicons name="trash-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color="#E57373" />
-            <Text style={{ color: "#E57373", fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3 }}>Delete</Text>
+            <Text style={{ color: "#E57373", fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3 }}>{t("roles.delete", "Delete")}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -261,6 +263,7 @@ function HallModal({
   hallCapacity, setHallCapacity,
   cvw, isTablet, vw,
 }) {
+  const { t } = useTranslation();
   const hallNameLen = hallName ? hallName.length : 0;
   const hallDescLen = hallDesc ? hallDesc.length : 0;
   const hallNameNearLimit = hallNameLen >= Math.floor(LIMITS.hallName.max * 0.85);
@@ -301,10 +304,10 @@ function HallModal({
                 </View>
                 <View>
                   <Text style={{ color: C.gold, fontSize: isTablet ? cvw * 2 : vw * 2.8, letterSpacing: 2, fontWeight: "700", textTransform: "uppercase" }}>
-                    Hall Management
+                    {t("venue.hallManagement", "Hall Management")}
                   </Text>
                   <Text style={{ color: C.white, fontSize: isTablet ? cvw * 3 : vw * 5, fontWeight: "800" }}>
-                    {editingHallId ? "Edit Hall" : "Add Hall"}
+                    {editingHallId ? t("venue.editHall", "Edit Hall") : t("venue.addHall", "Add Hall")}
                   </Text>
                 </View>
               </View>
@@ -322,12 +325,12 @@ function HallModal({
             </View>
 
             {/* Hall Name */}
-            <FieldLabel icon="storefront-outline" label="Hall Name" hint={`2–${LIMITS.hallName.max} characters`} cvw={cvw} isTablet={isTablet} />
+            <FieldLabel icon="storefront-outline" label={t("venue.hallName", "Hall Name")} hint={t("venue.nameHint", "2–{{max}} characters", { max: LIMITS.hallName.max })} cvw={cvw} isTablet={isTablet} />
             <View style={{ marginBottom: isTablet ? cvw * 1.8 : cvw * 4 }}>
               <TextInput
                 value={hallName}
                 onChangeText={(t) => { if (t.length <= LIMITS.hallName.max) setHallName(t); }}
-                placeholder="e.g. Crystal Ballroom"
+                placeholder={t("venue.hallNamePlaceholder", "e.g. Crystal Ballroom")}
                 placeholderTextColor={C.muted}
                 maxLength={LIMITS.hallName.max}
                 style={{
@@ -348,18 +351,18 @@ function HallModal({
               </Text>
               {hallName.length > 0 && hallName.trim().length < LIMITS.hallName.min && (
                 <Text style={{ color: C.red, fontSize: isTablet ? cvw * 1.6 : cvw * 2.8, marginTop: 2, marginLeft: 2 }}>
-                  Hall name must be at least {LIMITS.hallName.min} characters
+                  {t("venue.hallNameMin", "Hall name must be at least {{min}} characters", { min: LIMITS.hallName.min })}
                 </Text>
               )}
             </View>
 
             {/* Hall Description */}
-            <FieldLabel icon="document-text-outline" label="Description" hint="Features, amenities, or access notes" cvw={cvw} isTablet={isTablet} />
+            <FieldLabel icon="document-text-outline" label={t("staff.description", "Description")} hint={t("venue.hallDescHint", "Features, amenities, or access notes")} cvw={cvw} isTablet={isTablet} />
             <View style={{ marginBottom: isTablet ? cvw * 1.8 : cvw * 4 }}>
               <TextInput
                 value={hallDesc}
                 onChangeText={(t) => { if (t.length <= LIMITS.hallDesc.max) setHallDesc(t); }}
-                placeholder="e.g. Air-conditioned, stage included, ground floor access"
+                placeholder={t("venue.hallDescPlaceholder", "e.g. Air-conditioned, stage included, ground floor access")}
                 placeholderTextColor={C.muted}
                 multiline
                 numberOfLines={4}
@@ -385,7 +388,7 @@ function HallModal({
             </View>
 
             {/* Hall Capacity */}
-            <FieldLabel icon="people-outline" label="Capacity" hint={`Max guests (up to ${LIMITS.hallCapacity.cap.toLocaleString()})`} cvw={cvw} isTablet={isTablet} />
+            <FieldLabel icon="people-outline" label={t("venue.capacityOnly", "Capacity")} hint={t("venue.capacityHint", "Max guests (up to {{max}})", { max: LIMITS.hallCapacity.cap.toLocaleString() })} cvw={cvw} isTablet={isTablet} />
             <View style={{ marginBottom: isTablet ? cvw * 1.8 : cvw * 4 }}>
               <TextInput
                 value={hallCapacity}
@@ -399,7 +402,7 @@ function HallModal({
                     setHallCapacity(cleaned);
                   }
                 }}
-                placeholder="e.g. 250"
+                placeholder={t("venue.capacityPlaceholder", "e.g. 250")}
                 placeholderTextColor={C.muted}
                 keyboardType="numeric"
                 maxLength={LIMITS.hallCapacity.max}
@@ -425,7 +428,7 @@ function HallModal({
             >
               <Ionicons name={editingHallId ? "cloud-upload-outline" : "checkmark-circle-outline"} size={isTablet ? cvw * 2.6 : vw * 5} color="#000" />
               <Text style={{ color: "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.6 : vw * 4, textTransform: "uppercase", letterSpacing: 0.3 }}>
-                {editingHallId ? "Update Hall" : "Create Hall"}
+                {editingHallId ? t("venue.updateHall", "Update Hall") : t("venue.createHall", "Create Hall")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -437,6 +440,7 @@ function HallModal({
 
 // ─── Screen header ────────────────────────────────────────────────────────────
 function ScreenHeader({ siteName, onBack, onAddHall, cvw, isTablet }) {
+  const { t } = useTranslation();
   return (
     <View style={{
       flexDirection: "row", alignItems: "center",
@@ -453,11 +457,11 @@ function ScreenHeader({ siteName, onBack, onAddHall, cvw, isTablet }) {
         }}
       >
         <Ionicons name="arrow-back" size={isTablet ? cvw * 2.2 : 18} color={C.gold} />
-        {isTablet && <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>Back</Text>}
+        {isTablet && <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>{t("settings.cancel", "Back")}</Text>}
       </TouchableOpacity>
       <View style={{ flex: 1 }}>
         <Text style={{ color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8, letterSpacing: 3, fontWeight: "700", textTransform: "uppercase", marginBottom: 2 }}>
-          Venue Management
+          {t("venue.venueManagement", "Venue Management")}
         </Text>
         <Text style={{ color: C.white, fontSize: isTablet ? cvw * 3.5 : cvw * 5.5, fontWeight: "800", letterSpacing: -0.3 }} numberOfLines={1}>
           {siteName}
@@ -473,7 +477,7 @@ function ScreenHeader({ siteName, onBack, onAddHall, cvw, isTablet }) {
         }}
       >
         <Ionicons name="add" size={isTablet ? cvw * 2.2 : cvw * 4.5} color="#000" />
-        <Text style={{ color: "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.2 : cvw * 3.5 }}>Add Hall</Text>
+        <Text style={{ color: "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.2 : cvw * 3.5 }}>{t("venue.addHallBtn", "Add Hall")}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -491,6 +495,7 @@ function MainContent({
   saving, onSave,
   halls, onAddHall, onEditHall, onDeleteHall,
 }) {
+  const { t } = useTranslation();
   const moreInfoLen = moreInfo ? moreInfo.length : 0;
   const moreInfoNearLimit = moreInfoLen >= Math.floor(LIMITS.moreInfo.max * 0.85);
   const moreInfoAtLimit = moreInfoLen >= LIMITS.moreInfo.max;
@@ -502,11 +507,11 @@ function MainContent({
       keyboardShouldPersistTaps="handled"
     >
       {/* ── LOCATION ── */}
-      <SectionHeader title="GPS Location" icon="location-outline" cvw={cvw} isTablet={isTablet} />
+      <SectionHeader title={t("venue.gpsLocation", "GPS Location")} icon="location-outline" cvw={cvw} isTablet={isTablet} />
 
       <View style={{ flexDirection: "row", gap: cvw * 3 }}>
         <View style={{ flex: 1 }}>
-          <FieldLabel icon="navigate-circle-outline" label="Latitude" hint="e.g. 28.6139" cvw={cvw} isTablet={isTablet} />
+          <FieldLabel icon="navigate-circle-outline" label={t("venue.latitude", "Latitude")} hint={t("venue.latHint", "e.g. 28.6139")} cvw={cvw} isTablet={isTablet} />
           <StyledInput
             value={latitude} onChangeText={setLatitude}
             placeholder="28.6139" keyboardType="decimal-pad"
@@ -515,7 +520,7 @@ function MainContent({
           />
         </View>
         <View style={{ flex: 1 }}>
-          <FieldLabel icon="compass-outline" label="Longitude" hint="e.g. 77.2090" cvw={cvw} isTablet={isTablet} />
+          <FieldLabel icon="compass-outline" label={t("venue.longitude", "Longitude")} hint={t("venue.lngHint", "e.g. 77.2090")} cvw={cvw} isTablet={isTablet} />
           <StyledInput
             value={longitude} onChangeText={setLongitude}
             placeholder="77.2090" keyboardType="decimal-pad"
@@ -542,8 +547,8 @@ function MainContent({
         />
         <Text style={{ color: hasLocation ? "#5DBE8A" : C.gold, fontSize: isTablet ? cvw * 2 : cvw * 3.2, fontWeight: "600", flex: 1 }}>
           {hasLocation
-            ? `Location: ${parseFloat(latitude).toFixed(5)}, ${parseFloat(longitude).toFixed(5)}`
-            : "No location set — fill in manually or auto fetch below"}
+            ? t("venue.locationSetOnly", "Location: {{lat}}, {{lng}}", { lat: parseFloat(latitude).toFixed(5), lng: parseFloat(longitude).toFixed(5) })
+            : t("venue.noLocationSet", "No location set — fill in manually or auto fetch below")}
         </Text>
       </View>
 
@@ -566,17 +571,17 @@ function MainContent({
           : <Ionicons name="locate-outline" size={isTablet ? cvw * 2.4 : cvw * 5} color={C.gold} />
         }
         <Text style={{ color: loadingLocation ? C.muted : C.gold, fontWeight: "700", fontSize: isTablet ? cvw * 2.4 : cvw * 3.8, letterSpacing: 0.3 }}>
-          {loadingLocation ? "Fetching…" : "Auto Fetch Live Location"}
+          {loadingLocation ? t("venue.fetching", "Fetching…") : t("venue.autoFetchLocation", "Auto Fetch Live Location")}
         </Text>
       </TouchableOpacity>
 
       {/* ── CONFIGURATION ── */}
-      <SectionHeader title="Configuration" icon="settings-outline" cvw={cvw} isTablet={isTablet} />
+      <SectionHeader title={t("settings.configuration", "Configuration")} icon="settings-outline" cvw={cvw} isTablet={isTablet} />
 
       <FieldLabel
         icon="radio-button-on-outline"
-        label="Attendance Radius"
-        hint={`Meters staff can check in from (max ${LIMITS.radius.cap.toLocaleString()}m)`}
+        label={t("venue.attendanceRadius", "Attendance Radius")}
+        hint={t("venue.radiusHint", "Meters staff can check in from (max {{max}}m)", { max: LIMITS.radius.cap.toLocaleString() })}
         cvw={cvw} isTablet={isTablet}
       />
       <StyledInput
@@ -595,8 +600,8 @@ function MainContent({
 
       <FieldLabel
         icon="document-text-outline"
-        label="Additional Information"
-        hint="Address, access notes, parking, or any relevant site details"
+        label={t("venue.additionalInfo", "Additional Information")}
+        hint={t("venue.addInfoHint", "Address, access notes, parking, or any relevant site details")}
         cvw={cvw} isTablet={isTablet}
       />
       {/* Multiline with counter — inline since StyledInput doesn't pass showCount through MainContent props */}
@@ -604,7 +609,7 @@ function MainContent({
         <TextInput
           value={moreInfo}
           onChangeText={(t) => { if (t.length <= LIMITS.moreInfo.max) setMoreInfo(t); }}
-          placeholder="e.g. Main entrance on North side, parking available on Level B2..."
+          placeholder={t("venue.addInfoPlaceholder", "e.g. Main entrance on North side, parking available on Level B2...")}
           placeholderTextColor={C.muted}
           multiline
           numberOfLines={4}
@@ -644,16 +649,16 @@ function MainContent({
         }}
       >
         {saving
-          ? <><ActivityIndicator color="#000" size="small" /><Text style={{ color: C.muted, fontWeight: "700", fontSize: isTablet ? cvw * 2.6 : cvw * 4 }}>Saving…</Text></>
+          ? <><ActivityIndicator color="#000" size="small" /><Text style={{ color: C.muted, fontWeight: "700", fontSize: isTablet ? cvw * 2.6 : cvw * 4 }}>{t("venue.saving", "Saving…")}</Text></>
           : <><Ionicons name="cloud-upload-outline" size={isTablet ? cvw * 2.6 : cvw * 5} color="#000" />
             <Text style={{ color: "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.6 : cvw * 4, letterSpacing: 0.3, textTransform: "uppercase" }}>
-              Save Configuration
+              {t("venue.saveConfig", "Save Configuration")}
             </Text></>
         }
       </TouchableOpacity>
 
       {/* ── HALLS ── */}
-      <SectionHeader title="Halls" icon="grid-outline" cvw={cvw} isTablet={isTablet} />
+      <SectionHeader title={t("venue.halls", "Halls")} icon="grid-outline" cvw={cvw} isTablet={isTablet} />
 
       {halls.length === 0 ? (
         <View style={{
@@ -670,9 +675,9 @@ function MainContent({
           }}>
             <Ionicons name="grid-outline" size={isTablet ? cvw * 5 : cvw * 9} color={C.muted} />
           </View>
-          <Text style={{ color: C.white, fontWeight: "700", fontSize: isTablet ? cvw * 2.6 : cvw * 4.5 }}>No Halls Added</Text>
+          <Text style={{ color: C.white, fontWeight: "700", fontSize: isTablet ? cvw * 2.6 : cvw * 4.5 }}>{t("venue.noHallsAddedTitle", "No Halls Added")}</Text>
           <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2, textAlign: "center" }}>
-            Add halls to this venue so events can be assigned to a specific space
+            {t("venue.addHallsHint", "Add halls to this venue so events can be assigned to a specific space")}
           </Text>
           <TouchableOpacity
             onPress={onAddHall}
@@ -685,7 +690,7 @@ function MainContent({
             }}
           >
             <Ionicons name="add-circle-outline" size={isTablet ? cvw * 2.4 : cvw * 4.5} color="#000" />
-            <Text style={{ color: "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.4 : cvw * 3.8 }}>Add First Hall</Text>
+            <Text style={{ color: "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.4 : cvw * 3.8 }}>{t("venue.addFirstHall", "Add First Hall")}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -718,6 +723,7 @@ function MainContent({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function EditVenueScreen({ navigation, route }) {
+  const { t } = useTranslation();
   const { siteId } = route.params;
   const { vw, vh, cvw, isTablet } = useResponsive();
 
@@ -767,7 +773,7 @@ export default function EditVenueScreen({ navigation, route }) {
       <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: C.bg }}>
         <StatusBar barStyle="light-content" />
         <Ionicons name="lock-closed-outline" size={48} color={C.faint} />
-        <Text style={{ color: C.muted, marginTop: 12, fontSize: 15 }}>No Permission</Text>
+        <Text style={{ color: C.muted, marginTop: 12, fontSize: 15 }}>{t("roles.noPermission", "No Permission")}</Text>
       </SafeAreaView>
     );
   }
@@ -777,7 +783,7 @@ export default function EditVenueScreen({ navigation, route }) {
       <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: C.bg }}>
         <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color={C.gold} />
-        <Text style={{ color: C.muted, marginTop: 12, letterSpacing: 1.5, fontSize: 13 }}>LOADING VENUE</Text>
+        <Text style={{ color: C.muted, marginTop: 12, letterSpacing: 1.5, fontSize: 13 }}>{t("venue.loadingVenue", "LOADING VENUE")}</Text>
       </SafeAreaView>
     );
   }
@@ -786,13 +792,13 @@ export default function EditVenueScreen({ navigation, route }) {
     try {
       setLoadingLocation(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") { Alert.alert("Location permission denied"); return; }
+      if (status !== "granted") { Alert.alert(t("roles.error", "Error"), t("venue.locationDenied", "Location permission denied")); return; }
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setLatitude(location.coords.latitude.toString());
       setLongitude(location.coords.longitude.toString());
-      Alert.alert("Location updated");
+      Alert.alert(t("roles.success", "Success"), t("venue.locationUpdated", "Location updated"));
     } catch {
-      Alert.alert("Failed to fetch location");
+      Alert.alert(t("roles.error", "Error"), t("venue.locationFailed", "Failed to fetch location"));
     } finally {
       setLoadingLocation(false);
     }
@@ -803,16 +809,16 @@ export default function EditVenueScreen({ navigation, route }) {
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
     if (latitude && (isNaN(lat) || lat < -90 || lat > 90)) {
-      Alert.alert("Validation", "Latitude must be between -90 and 90");
+      Alert.alert(t("roles.validationError", "Validation Error"), t("venue.latRange", "Latitude must be between -90 and 90"));
       return;
     }
     if (longitude && (isNaN(lng) || lng < -180 || lng > 180)) {
-      Alert.alert("Validation", "Longitude must be between -180 and 180");
+      Alert.alert(t("roles.validationError", "Validation Error"), t("venue.lngRange", "Longitude must be between -180 and 180"));
       return;
     }
     const radius = Number(allowedRadius);
     if (allowedRadius && (isNaN(radius) || radius < 0 || radius > LIMITS.radius.cap)) {
-      Alert.alert("Validation", `Radius must be between 0 and ${LIMITS.radius.cap.toLocaleString()} meters`);
+      Alert.alert(t("roles.validationError", "Validation Error"), t("venue.radiusRange", "Radius must be between 0 and {{max}} meters", { max: LIMITS.radius.cap.toLocaleString() }));
       return;
     }
     try {
@@ -823,18 +829,18 @@ export default function EditVenueScreen({ navigation, route }) {
         address: moreInfo,
       });
       setSite(updated);
-      Alert.alert("Success", "Venue updated successfully");
+      Alert.alert(t("roles.success", "Success"), t("venue.venueUpdated", "Venue updated successfully"));
     } catch {
-      Alert.alert("Update failed");
+      Alert.alert(t("roles.error", "Error"), t("venue.updateFailed", "Update failed"));
     } finally {
       setSaving(false);
     }
   };
 
   const handleSaveHall = async () => {
-    if (!hallName.trim()) { Alert.alert("Hall name required"); return; }
+    if (!hallName.trim()) { Alert.alert(t("roles.validationError", "Validation Error"), t("venue.hallNameReq", "Hall name required")); return; }
     if (hallName.trim().length < LIMITS.hallName.min) {
-      Alert.alert("Validation", `Hall name must be at least ${LIMITS.hallName.min} characters`);
+      Alert.alert(t("roles.validationError", "Validation Error"), t("venue.hallNameMin", "Hall name must be at least {{min}} characters", { min: LIMITS.hallName.min }));
       return;
     }
     try {
@@ -843,32 +849,32 @@ export default function EditVenueScreen({ navigation, route }) {
           name: hallName.trim(), description: hallDesc, capacity: Number(hallCapacity),
         });
         setHalls(halls.map(h => h.id === editingHallId ? updated : h));
-        Alert.alert("Hall updated");
+        Alert.alert(t("roles.success", "Success"), t("venue.hallUpdated", "Hall updated"));
       } else {
         const newHall = await createHall(siteId, {
           name: hallName.trim(), description: hallDesc, capacity: Number(hallCapacity),
         });
         setHalls([...halls, newHall]);
-        Alert.alert("Hall created");
+        Alert.alert(t("roles.success", "Success"), t("venue.hallCreated", "Hall created"));
       }
       setModalVisible(false);
       setEditingHallId(null);
       setHallName(""); setHallDesc(""); setHallCapacity("");
     } catch {
-      Alert.alert("Operation failed");
+      Alert.alert(t("roles.error", "Error"), t("venue.operationFailed", "Operation failed"));
     }
   };
 
   const handleDeleteHall = async (id) => {
-    Alert.alert("Delete Hall", "Are you sure you want to delete this hall?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("venue.deleteHall", "Delete Hall"), t("venue.deleteHallConfirm", "Are you sure you want to delete this hall?"), [
+      { text: t("settings.cancel", "Cancel"), style: "cancel" },
       {
-        text: "Delete", style: "destructive",
+        text: t("roles.delete", "Delete"), style: "destructive",
         onPress: async () => {
           try {
             await deleteHall(siteId, id);
             setHalls(halls.filter(h => h.id !== id));
-          } catch { Alert.alert("Delete failed"); }
+          } catch { Alert.alert(t("roles.error", "Error"), t("venue.deleteFailed", "Delete failed")); }
         },
       },
     ]);

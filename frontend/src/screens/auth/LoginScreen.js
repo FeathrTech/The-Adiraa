@@ -22,6 +22,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { loginRequest } from "../../api/authApi";
 import { useAuthStore } from "../../store/authStore";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -63,12 +64,13 @@ export default function LoginScreen() {
   const [focusedField, setFocusedField] = useState(null);
   const [supportVisible, setSupportVisible] = useState(false);
 
+  const { t } = useTranslation();
   const login = useAuthStore((state) => state.login);
 
   // ─── Logic unchanged ──────────────────────────────────────────────────────
   const handleLogin = async () => {
     if (!username || !password) {
-      Alert.alert("Validation Error", "All fields are required");
+      Alert.alert(t("auth.validationError"), t("auth.allFieldsRequired"));
       return;
     }
     try {
@@ -78,7 +80,7 @@ export default function LoginScreen() {
       await AsyncStorage.setItem("user", JSON.stringify(data.user));
       login(data.user, data.token);
     } catch (error) {
-      Alert.alert("Login Failed", error.response?.data?.message || "Invalid credentials");
+      Alert.alert(t("auth.loginFailed"), error.response?.data?.message || t("auth.invalidCredentials"));
     } finally {
       setLoading(false);
     }
@@ -91,19 +93,19 @@ export default function LoginScreen() {
   const contactActions = [
     {
       icon: "mail-outline",
-      label: "Email Us",
+      label: t("auth.emailUs"),
       value: SUPPORT.email,
       onPress: () => Linking.openURL(`mailto:${SUPPORT.email}`),
     },
     {
       icon: "call-outline",
-      label: "Call Us",
+      label: t("auth.callUs"),
       value: SUPPORT.phone,
       onPress: () => Linking.openURL(`tel:${SUPPORT.whatsapp}`),
     },
     {
       icon: "logo-whatsapp",
-      label: "WhatsApp",
+      label: t("auth.whatsapp"),
       value: SUPPORT.phone,
       onPress: () => Linking.openURL(`https://wa.me/${SUPPORT.whatsapp}`),
       color: "#25D366",
@@ -112,7 +114,7 @@ export default function LoginScreen() {
     },
     {
       icon: "globe-outline",
-      label: "Website",
+      label: t("auth.website"),
       value: SUPPORT.website,
       onPress: () => Linking.openURL(SUPPORT.website),
     },
@@ -215,7 +217,7 @@ export default function LoginScreen() {
               marginBottom: vh * 3.5,
               letterSpacing: 0.3,
             }}>
-              Login into your account
+              {t("auth.loginTitle")}
             </Text>
 
             {/* Username input */}
@@ -229,7 +231,7 @@ export default function LoginScreen() {
               marginBottom: vh * 2.5,
             }}>
               <TextInput
-                placeholder="Username"
+                placeholder={t("auth.usernamePlaceholder")}
                 placeholderTextColor={C.gold}
                 value={username}
                 onChangeText={setUsername}
@@ -256,7 +258,7 @@ export default function LoginScreen() {
               marginBottom: vh * 4,
             }}>
               <TextInput
-                placeholder="Password"
+                placeholder={t("auth.passwordPlaceholder")}
                 placeholderTextColor={C.gold}
                 secureTextEntry={!showPass}
                 value={password}
@@ -302,7 +304,7 @@ export default function LoginScreen() {
                   fontSize: isTablet ? 17 : 15,
                   letterSpacing: 0.5,
                 }}>
-                  Login
+                  {t("auth.loginButton")}
                 </Text>
               )}
             </TouchableOpacity>
@@ -315,7 +317,7 @@ export default function LoginScreen() {
             onPress={() => navigation.navigate("Signup")}
             style={{ marginTop: vh * 3, alignItems: "center" }}>
             <Text style={{ color: C.gold, fontSize: isTablet ? 14 : 13, fontWeight: "600" }}>
-              Create New Company Account
+              {t("auth.createNewCompany")}
             </Text>
           </TouchableOpacity>
 
@@ -325,7 +327,7 @@ export default function LoginScreen() {
             style={{ marginTop: vh * 1.5, alignItems: "center" }}
           >
             <Text style={{ color: C.muted, fontSize: isTablet ? 13 : 12 }}>
-              Need Help? Contact Support
+              {t("auth.needHelp")}
             </Text>
           </TouchableOpacity>
 
@@ -343,7 +345,7 @@ export default function LoginScreen() {
               fontWeight: "500",
               letterSpacing: 0.8,
             }}>
-              Powered by FeathrTech
+              {t("auth.poweredBy")}
             </Text>
             <View style={{ width: 16, height: 1, backgroundColor: "rgba(201,162,39,0.3)" }} />
           </View>
@@ -401,14 +403,14 @@ export default function LoginScreen() {
                     fontWeight: "700",
                     fontSize: isTablet ? 17 : 15,
                   }}>
-                    Contact FeathrTech
+                    {t("auth.contactFeathrTech")}
                   </Text>
                   <Text style={{
                     color: C.muted,
                     fontSize: isTablet ? 12 : 11,
                     marginTop: 1,
                   }}>
-                    We're here to help
+                    {t("auth.hereToHelp")}
                   </Text>
                 </View>
               </View>
@@ -499,7 +501,7 @@ export default function LoginScreen() {
               marginTop: 6,
               lineHeight: 16,
             }}>
-              Support available Mon–Sat, 9 AM – 6 PM IST
+              {t("auth.supportAvailable")}
             </Text>
 
           </View>

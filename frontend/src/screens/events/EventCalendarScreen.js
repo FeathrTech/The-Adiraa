@@ -20,6 +20,7 @@ import { fetchSites, fetchSiteById } from "../../api/siteApi";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAuthStore } from "../../store/authStore";
 import { deleteEvent } from "../../api/eventsApi";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -63,6 +64,7 @@ function useResponsive() {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function EventCalendarScreen() {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const { user } = useAuthStore();
     const { width, vw, vh, cvw, isTablet } = useResponsive();
@@ -372,7 +374,7 @@ export default function EventCalendarScreen() {
                     }}>
                         <Ionicons name="warning-outline" size={isTablet ? cvw * 2 : 14} color={C.orange} />
                         <Text style={{ color: C.orange, fontSize: isTablet ? cvw * 1.9 : cvw * 3, flex: 1 }}>
-                            Slot confirmed by another entry — please follow up or remove
+                            {t("events.orphanWarning")}
                         </Text>
                     </View>
                 )}
@@ -396,7 +398,7 @@ export default function EventCalendarScreen() {
                             fontWeight: "600", color: badge.text,
                             textTransform: "capitalize",
                         }}>
-                            {event.status.replace("_", " ")}
+                            {t(`events.${event.status === "in_talks" ? "inTalks" : event.status}`)}
                         </Text>
                     </View>
 
@@ -427,7 +429,7 @@ export default function EventCalendarScreen() {
                         }}>
                             <Ionicons name="warning-outline" size={isTablet ? cvw * 1.8 : cvw * 2.8} color={C.orange} />
                             <Text style={{ fontSize: isTablet ? cvw * 2 : cvw * 2.8, color: C.orange, fontWeight: "600" }}>
-                                Already Booked
+                                {t("events.alreadyBooked")}
                             </Text>
                         </View>
                     )}
@@ -451,19 +453,19 @@ export default function EventCalendarScreen() {
                             }}
                         >
                             <Ionicons name="pencil-outline" size={isTablet ? cvw * 2 : 14} color={C.gold} />
-                            <Text style={{ color: C.gold, fontSize: isTablet ? cvw * 2.2 : 13, fontWeight: "600" }}>Edit</Text>
+                            <Text style={{ color: C.gold, fontSize: isTablet ? cvw * 2.2 : 13, fontWeight: "600" }}>{t("events.edit")}</Text>
                         </TouchableOpacity>
 
                         {can("event.delete") && (
                             <TouchableOpacity
                                 onPress={() => {
                                     Alert.alert(
-                                        "Delete Event",
-                                        "Are you sure you want to delete this event?",
+                                        t("events.deleteEvent"),
+                                        t("events.deleteEventConfirm"),
                                         [
-                                            { text: "Cancel", style: "cancel" },
+                                            { text: t("events.cancel"), style: "cancel" },
                                             {
-                                                text: "Delete",
+                                                text: t("events.delete"),
                                                 style: "destructive",
                                                 onPress: async () => {
                                                     try {
@@ -471,7 +473,7 @@ export default function EventCalendarScreen() {
                                                         loadEvents(selectedDate, selectedHall);
                                                         loadCalendar(selectedSite?.id, selectedDate, currentMonth.year, currentMonth.month, selectedHall);
                                                     } catch {
-                                                        Alert.alert("Error", "Failed to delete event");
+                                                        Alert.alert(t("events.error"), t("events.failedToDelete"));
                                                     }
                                                 },
                                             },
@@ -486,7 +488,7 @@ export default function EventCalendarScreen() {
                                 }}
                             >
                                 <Ionicons name="trash-outline" size={isTablet ? cvw * 2 : 14} color="#E57373" />
-                                <Text style={{ color: "#E57373", fontSize: isTablet ? cvw * 2.2 : 13, fontWeight: "600" }}>Delete</Text>
+                                <Text style={{ color: "#E57373", fontSize: isTablet ? cvw * 2.2 : 13, fontWeight: "600" }}>{t("events.delete")}</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -537,7 +539,7 @@ export default function EventCalendarScreen() {
                             borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2,
                         }}>
                             <Text style={{ color: C.gold, fontSize: isTablet ? cvw * 1.8 : cvw * 2.8, fontWeight: "600" }}>
-                                {slotEvents.length} entries
+                                {slotEvents.length} {t("events.entries")}
                             </Text>
                         </View>
                     )}
@@ -552,7 +554,7 @@ export default function EventCalendarScreen() {
                         }}>
                             <Ionicons name="checkmark-circle-outline" size={isTablet ? cvw * 1.8 : 12} color="#E57373" />
                             <Text style={{ color: "#E57373", fontSize: isTablet ? cvw * 1.8 : cvw * 2.8, fontWeight: "600" }}>
-                                Confirmed
+                                {t("events.confirmed")}
                             </Text>
                         </View>
                     )}
@@ -574,7 +576,7 @@ export default function EventCalendarScreen() {
                     !isPast && (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: DOT.available }} />
-                            <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2.2 : cvw * 3.2 }}>Available</Text>
+                            <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2.2 : cvw * 3.2 }}>{t("events.available")}</Text>
                         </View>
                     )
                 )}
@@ -611,7 +613,7 @@ export default function EventCalendarScreen() {
                     fontWeight: "800", marginLeft: 12,
                     color: C.white, letterSpacing: -0.3,
                 }}>
-                    Event Calendar
+                    {t("events.eventCalendar")}
                 </Text>
             </View>
 
@@ -624,7 +626,7 @@ export default function EventCalendarScreen() {
                         fontSize: isTablet ? cvw * 2 : 12, color: C.muted, marginBottom: 8,
                         letterSpacing: 2, fontWeight: "600", textTransform: "uppercase",
                     }}>
-                        Location
+                        {t("events.location")}
                     </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {sites.map((site) => (
@@ -659,7 +661,7 @@ export default function EventCalendarScreen() {
                         fontSize: isTablet ? cvw * 2 : 12, color: C.muted, marginBottom: 8,
                         letterSpacing: 2, fontWeight: "600", textTransform: "uppercase",
                     }}>
-                        Hall
+                        {t("events.hall")}
                     </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <TouchableOpacity
@@ -677,7 +679,7 @@ export default function EventCalendarScreen() {
                                 fontWeight: selectedHall === null ? "700" : "500",
                                 fontSize: isTablet ? cvw * 2.2 : 13,
                             }}>
-                                All Halls
+                                {t("events.allHalls")}
                             </Text>
                         </TouchableOpacity>
 
@@ -748,9 +750,9 @@ export default function EventCalendarScreen() {
     const Legend = () => (
         <View style={{ flexDirection: "row", gap: 16, marginTop: 12, marginBottom: 4, paddingHorizontal: 4 }}>
             {[
-                { color: DOT.booked, label: "Booked" },
-                { color: DOT.in_talks, label: "In Talks" },
-                { color: DOT.available, label: "Available" },
+                { color: DOT.booked, label: t("events.booked") },
+                { color: DOT.in_talks, label: t("events.inTalks") },
+                { color: DOT.available, label: t("events.available") },
             ].map(({ color, label }) => (
                 <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                     <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
@@ -792,8 +794,8 @@ export default function EventCalendarScreen() {
                     <ActivityIndicator color={C.gold} />
                 ) : (
                     <>
-                        <SlotCard title="Lunch" slotIcon="restaurant-outline" slotEvents={lunchEvents} slot="lunch" />
-                        <SlotCard title="Dinner" slotIcon="moon-outline" slotEvents={dinnerEvents} slot="dinner" />
+                        <SlotCard title={t("events.lunch")} slotIcon="restaurant-outline" slotEvents={lunchEvents} slot="lunch" />
+                        <SlotCard title={t("events.dinner")} slotIcon="moon-outline" slotEvents={dinnerEvents} slot="dinner" />
                     </>
                 )}
 
@@ -809,7 +811,7 @@ export default function EventCalendarScreen() {
                     >
                         <Ionicons name="add-circle-outline" size={isTablet ? cvw * 2.5 : 18} color="#000" />
                         <Text style={{ color: "#000", fontWeight: "700", fontSize: isTablet ? cvw * 2.6 : 15, letterSpacing: 0.3 }}>
-                            Add Event
+                            {t("events.addEvent")}
                         </Text>
                     </TouchableOpacity>
                 )}

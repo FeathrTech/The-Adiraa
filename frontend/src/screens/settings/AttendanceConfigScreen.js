@@ -20,6 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { fetchRoles } from "../../api/roleApi";
 import api from "../../api/axios";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -58,6 +59,7 @@ function useResponsive() {
 
 // ─── Time Input ───────────────────────────────────────────────────────────────
 function TimeInput({ value, onChange, placeholder, cvw, vh, isTablet }) {
+  const { t } = useTranslation();
   const [raw, setRaw] = useState(value ?? "");
   const [error, setError] = useState(false);
 
@@ -173,7 +175,7 @@ function TimeInput({ value, onChange, placeholder, cvw, vh, isTablet }) {
       </View>
       {error && (
         <Text style={{ color: C.red, fontSize: isTablet ? cvw * 1.4 : cvw * 2.8, marginTop: 4, marginLeft: 4 }}>
-          Use 24h format — e.g. 17:00 or 08:30
+          {t("settings.timeFormatError")}
         </Text>
       )}
     </View>
@@ -256,7 +258,7 @@ function ToggleRow({ label, sublabel, value, onChange, cvw, vh, isTablet }) {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function AttendanceConfigScreen() {
-
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { vw, vh, cvw, isTablet } = useResponsive();
 
@@ -278,13 +280,13 @@ export default function AttendanceConfigScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchRoles();
-        setRoles(data);
-      } catch {
-        Alert.alert("Error", "Failed to load roles");
-      } finally {
-        setLoading(false);
-      }
+          const data = await fetchRoles();
+          setRoles(data);
+        } catch {
+          Alert.alert(t("roles.error"), t("roles.failedToLoadRoles"));
+        } finally {
+          setLoading(false);
+        }
     })();
   }, []);
 
@@ -340,11 +342,11 @@ export default function AttendanceConfigScreen() {
 
   // ── Save ─────────────────────────────────────────────────────────────────────
   const saveConfig = async () => {
-    if (!selectedRole) { Alert.alert("Select a role first"); return; }
+    if (!selectedRole) { Alert.alert(t("settings.selectRoleFirst")); return; }
 
     const threshold = Number(lateThreshold);
     if (isNaN(threshold) || threshold < 0 || threshold > LATE_THRESHOLD_MAX) {
-      Alert.alert("Validation", `Late threshold must be between 0 and ${LATE_THRESHOLD_MAX} minutes.`);
+      Alert.alert(t("roles.validation"), t("settings.lateThresholdValidation", { max: LATE_THRESHOLD_MAX }));
       return;
     }
 
@@ -358,11 +360,11 @@ export default function AttendanceConfigScreen() {
         checkoutReminder1: checkoutReminder1 || null,
         checkoutReminder2: checkoutReminder2 || null,
       });
-      Alert.alert("Saved", "Configuration saved successfully", [
+      Alert.alert(t("settings.saved"), t("settings.configSavedSuccess"), [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch {
-      Alert.alert("Error", "Failed to save configuration");
+      Alert.alert(t("roles.error"), t("settings.failedToSaveConfig"));
     } finally {
       setSaving(false);
     }
@@ -420,7 +422,7 @@ export default function AttendanceConfigScreen() {
                 marginBottom: 2,
               }}
             >
-              Settings
+              {t("settings.settingsTitle")}
             </Text>
             <Text
               style={{
@@ -430,7 +432,7 @@ export default function AttendanceConfigScreen() {
                 letterSpacing: -0.5,
               }}
             >
-              Attendance Config
+              {t("settings.attendanceConfigMenu")}
             </Text>
           </View>
 
@@ -447,7 +449,7 @@ export default function AttendanceConfigScreen() {
           >
 
             {/* ── ROLE SELECTION ── */}
-            <SectionCard title="Select Role" icon="people-outline" cvw={cvw} vh={vh} isTablet={isTablet}>
+            <SectionCard title={t("settings.selectRole")} icon="people-outline" cvw={cvw} vh={vh} isTablet={isTablet}>
               {roles.map((role) => (
                 <TouchableOpacity
                   key={role.id}
@@ -492,16 +494,16 @@ export default function AttendanceConfigScreen() {
                   <View style={{ alignItems: "center", paddingVertical: vh * 3 }}>
                     <ActivityIndicator color={C.gold} />
                     <Text style={{ color: C.muted, marginTop: 8, fontSize: cvw * 3 }}>
-                      Loading config…
+                      {t("settings.loadingConfig")}
                     </Text>
                   </View>
                 ) : (
                   <>
                     {/* ── LOCATION RULES ── */}
-                    <SectionCard title="Location Rules" icon="location-outline" cvw={cvw} vh={vh} isTablet={isTablet}>
+                    <SectionCard title={t("settings.locationRules")} icon="location-outline" cvw={cvw} vh={vh} isTablet={isTablet}>
                       <ToggleRow
-                        label="Allow Outside Radius"
-                        sublabel="Staff can check in/out even when outside the site boundary"
+                        label={t("settings.allowOutsideRadius")}
+                        sublabel={t("settings.allowOutsideRadiusHint")}
                         value={allowOutsideRadius}
                         onChange={setAllowOutsideRadius}
                         cvw={cvw} vh={vh} isTablet={isTablet}
@@ -509,10 +511,10 @@ export default function AttendanceConfigScreen() {
                     </SectionCard>
 
                     {/* ── LATE POLICY ── */}
-                    <SectionCard title="Late Policy" icon="alarm-outline" cvw={cvw} vh={vh} isTablet={isTablet}>
+                    <SectionCard title={t("settings.latePolicy")} icon="alarm-outline" cvw={cvw} vh={vh} isTablet={isTablet}>
                       <ToggleRow
-                        label="Allow Late Check-In"
-                        sublabel="Staff can check in after the late threshold"
+                        label={t("settings.allowLateCheckIn")}
+                        sublabel={t("settings.allowLateCheckInHint")}
                         value={allowLateCheckIn}
                         onChange={setAllowLateCheckIn}
                         cvw={cvw} vh={vh} isTablet={isTablet}
@@ -527,7 +529,7 @@ export default function AttendanceConfigScreen() {
                           marginBottom: vh * 0.8,
                         }}
                       >
-                        Grace period before marking as late (max {LATE_THRESHOLD_MAX} min)
+                        {t("settings.gracePeriodHint", { max: LATE_THRESHOLD_MAX })}
                       </Text>
 
                       <View
@@ -571,7 +573,7 @@ export default function AttendanceConfigScreen() {
                           color: thresholdNearMax ? "#F97316" : C.muted,
                           fontSize: isTablet ? cvw * 1.6 : cvw * 3,
                         }}>
-                          / {LATE_THRESHOLD_MAX} min
+                          {t("settings.maxGracePeriod", { max: LATE_THRESHOLD_MAX })}
                         </Text>
                       </View>
 
@@ -582,13 +584,13 @@ export default function AttendanceConfigScreen() {
                           marginTop: 4,
                           marginLeft: 2,
                         }}>
-                          Maximum grace period is {LATE_THRESHOLD_MAX} minutes
+                          {t("settings.maxGracePeriodError", { max: LATE_THRESHOLD_MAX })}
                         </Text>
                       )}
                     </SectionCard>
 
                     {/* ── CHECKOUT REMINDERS ── */}
-                    <SectionCard title="Checkout Reminders" icon="notifications-outline" cvw={cvw} vh={vh} isTablet={isTablet}>
+                    <SectionCard title={t("settings.checkoutReminders")} icon="notifications-outline" cvw={cvw} vh={vh} isTablet={isTablet}>
                       <Text
                         style={{
                           color: C.muted,
@@ -597,7 +599,7 @@ export default function AttendanceConfigScreen() {
                           lineHeight: isTablet ? cvw * 2.2 : cvw * 4.5,
                         }}
                       >
-                        Push notifications will be sent to unchecked-out staff at these times (IST, 24h format). Leave blank to disable.
+                        {t("settings.checkoutRemindersHint")}
                       </Text>
 
                       <Text
@@ -608,7 +610,7 @@ export default function AttendanceConfigScreen() {
                           marginBottom: vh * 0.6,
                         }}
                       >
-                        First Reminder
+                        {t("settings.firstReminder")}
                       </Text>
                       <TimeInput
                         value={checkoutReminder1}
@@ -627,7 +629,7 @@ export default function AttendanceConfigScreen() {
                           marginBottom: vh * 0.6,
                         }}
                       >
-                        Second Reminder
+                        {t("settings.secondReminder")}
                       </Text>
                       <TimeInput
                         value={checkoutReminder2}
@@ -649,7 +651,7 @@ export default function AttendanceConfigScreen() {
                           }}
                         >
                           <Text style={{ color: C.gold, fontWeight: "700", fontSize: isTablet ? cvw * 1.5 : cvw * 2.8, letterSpacing: 1, textTransform: "uppercase" }}>
-                            Active Reminders
+                            {t("settings.activeReminders")}
                           </Text>
                           {checkoutReminder1 && (
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -706,7 +708,7 @@ export default function AttendanceConfigScreen() {
                         textTransform: "uppercase",
                       }}
                     >
-                      Save Configuration
+                      {t("settings.saveConfiguration")}
                     </Text>
                   </>
                 )}

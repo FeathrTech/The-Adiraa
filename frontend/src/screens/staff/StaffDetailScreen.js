@@ -13,6 +13,7 @@ import {
   Linking,
 } from "react-native";
 
+import { useTranslation } from "react-i18next";
 import { Calendar } from "react-native-calendars";
 import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -61,8 +62,8 @@ function useResponsive() {
   return { width, height, vw, vh, cvw, isTablet };
 }
 
-// ─── ID Proof Modal ───────────────────────────────────────────────────────────
 function IdProofModal({ visible, url, onClose, cvw, isTablet }) {
+  const { t } = useTranslation();
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
@@ -133,10 +134,10 @@ function IdProofModal({ visible, url, onClose, cvw, isTablet }) {
               </View>
               <View>
                 <Text style={{ color: C.white, fontWeight: "700", fontSize: isTablet ? cvw * 2.2 : 15 }}>
-                  ID Proof
+                  {t("staff.idProof", "ID Proof")}
                 </Text>
                 <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.7 : 11, marginTop: 1 }}>
-                  {isPdf ? "PDF Document" : "Image Document"}
+                  {isPdf ? t("staff.pdfDocument", "PDF Document") : t("staff.imageDocument", "Image Document")}
                 </Text>
               </View>
             </View>
@@ -164,13 +165,13 @@ function IdProofModal({ visible, url, onClose, cvw, isTablet }) {
                 color: C.white, fontWeight: "700",
                 fontSize: isTablet ? cvw * 2.4 : 15, textAlign: "center",
               }}>
-                PDF Document
+                {t("staff.pdfDocument", "PDF Document")}
               </Text>
               <Text style={{
                 color: C.muted, fontSize: isTablet ? cvw * 1.8 : 12,
                 textAlign: "center", lineHeight: 18,
               }}>
-                PDF files cannot be previewed inline.{"\n"}Tap below to open in your browser.
+                {t("staff.pdfPreviewHint", "PDF files cannot be previewed inline.\nTap below to open in your browser.")}
               </Text>
               <TouchableOpacity
                 onPress={handleOpenInBrowser}
@@ -186,7 +187,7 @@ function IdProofModal({ visible, url, onClose, cvw, isTablet }) {
               >
                 <Ionicons name="open-outline" size={18} color="#000" />
                 <Text style={{ color: "#000", fontWeight: "700", fontSize: isTablet ? cvw * 2 : 14 }}>
-                  Open PDF
+                  {t("staff.openPdf", "Open PDF")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -195,7 +196,7 @@ function IdProofModal({ visible, url, onClose, cvw, isTablet }) {
             <View style={{ alignItems: "center", paddingVertical: 28, gap: 12 }}>
               <Ionicons name="image-outline" size={52} color={C.muted} />
               <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : 13, textAlign: "center" }}>
-                Could not load the document image.
+                {t("staff.imageLoadError", "Could not load the document image.")}
               </Text>
               <TouchableOpacity
                 onPress={handleOpenInBrowser}
@@ -210,7 +211,7 @@ function IdProofModal({ visible, url, onClose, cvw, isTablet }) {
               >
                 <Ionicons name="open-outline" size={15} color={C.blue} />
                 <Text style={{ color: C.blue, fontWeight: "600", fontSize: isTablet ? cvw * 1.9 : 13 }}>
-                  Open in Browser
+                  {t("staff.openInBrowser", "Open in Browser")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -248,7 +249,7 @@ function IdProofModal({ visible, url, onClose, cvw, isTablet }) {
             >
               <Ionicons name="open-outline" size={13} color={C.muted} />
               <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.7 : 12 }}>
-                Open full size in browser
+                {t("staff.openFullSize", "Open full size in browser")}
               </Text>
             </TouchableOpacity>
           )}
@@ -260,6 +261,7 @@ function IdProofModal({ visible, url, onClose, cvw, isTablet }) {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function StaffDetailScreen() {
+  const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
   const { vw, vh, cvw, isTablet } = useResponsive();
@@ -456,28 +458,28 @@ export default function StaffDetailScreen() {
         <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color={C.gold} />
         <Text style={{ color: C.muted, marginTop: 12, fontWeight: "700", letterSpacing: 1.5, fontSize: 13 }}>
-          LOADING PROFILE
+          {t("staff.loadingProfile", "LOADING PROFILE")}
         </Text>
       </SafeAreaView>
     );
   }
 
-  const roleLabel = user.roles?.map((r) => r.name).join(", ") || "No Role";
+  const roleLabel = user.roles?.map((r) => r.name).join(", ") || t("staff.noRole", "No Role");
   const initials = user.name?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
   const statTiles = [
-    { label: "Days Worked", value: stats.daysWorked, icon: "calendar-outline" },
-    { label: "Late Days", value: stats.lateDays, icon: "time-outline" },
-    { label: "Overtime", value: stats.overtime, icon: "trending-up-outline" },
-    { label: "Absents", value: stats.absents, icon: "close-circle-outline" },
+    { label: t("staff.daysWorked", "Days Worked"), value: stats.daysWorked, icon: "calendar-outline" },
+    { label: t("staff.lateDays", "Late Days"), value: stats.lateDays, icon: "time-outline" },
+    { label: t("staff.overtime", "Overtime"), value: stats.overtime, icon: "trending-up-outline" },
+    { label: t("staff.absents", "Absents"), value: stats.absents, icon: "close-circle-outline" },
   ];
 
   const getStatusMeta = (s) => ({
-    Present: { color: "#5DBE8A", bg: "rgba(93,190,138,0.12)", border: "rgba(93,190,138,0.4)", label: "PRESENT" },
-    Late: { color: "#F97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.4)", label: "LATE" },
-    Completed: { color: "#60A5FA", bg: "rgba(96,165,250,0.12)", border: "rgba(96,165,250,0.4)", label: "COMPLETED" },
-    Absent: { color: "#E57373", bg: "rgba(229,115,115,0.1)", border: "rgba(229,115,115,0.35)", label: "ABSENT" },
-    NotMarked: { color: "#888888", bg: "rgba(136,136,136,0.1)", border: "rgba(136,136,136,0.3)", label: "NOT MARKED" },
+    Present: { color: "#5DBE8A", bg: "rgba(93,190,138,0.12)", border: "rgba(93,190,138,0.4)", label: t("staff.presentCaps", "PRESENT") },
+    Late: { color: "#F97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.4)", label: t("staff.lateCaps", "LATE") },
+    Completed: { color: "#60A5FA", bg: "rgba(96,165,250,0.12)", border: "rgba(96,165,250,0.4)", label: t("staff.completedCaps", "COMPLETED") },
+    Absent: { color: "#E57373", bg: "rgba(229,115,115,0.1)", border: "rgba(229,115,115,0.35)", label: t("staff.absentCaps", "ABSENT") },
+    NotMarked: { color: "#888888", bg: "rgba(136,136,136,0.1)", border: "rgba(136,136,136,0.3)", label: t("staff.notMarkedCaps", "NOT MARKED") },
   }[s] || { color: C.muted, bg: "rgba(100,100,100,0.1)", border: "rgba(100,100,100,0.3)", label: s?.toUpperCase() ?? "--" });
 
   return (
@@ -528,13 +530,13 @@ export default function StaffDetailScreen() {
                   color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8,
                   letterSpacing: 3, fontWeight: "700", textTransform: "uppercase", marginBottom: 2,
                 }}>
-                  Staff Management
+                  {t("staff.staffManagement", "Staff Management")}
                 </Text>
                 <Text style={{
                   color: C.white, fontSize: isTablet ? cvw * 3.5 : cvw * 5.5,
                   fontWeight: "900", letterSpacing: -0.5,
                 }}>
-                  Staff Profile
+                  {t("staff.staffProfile", "Staff Profile")}
                 </Text>
               </View>
             </View>
@@ -649,7 +651,7 @@ export default function StaffDetailScreen() {
                     <Ionicons name="pulse-outline" size={isTablet ? cvw * 2.4 : cvw * 4} color={C.gold} />
                   </View>
                   <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.5, fontWeight: "600" }}>
-                    Today
+                    {t("staff.today", "Today")}
                   </Text>
                 </View>
                 {(() => {
@@ -678,7 +680,7 @@ export default function StaffDetailScreen() {
               </View>
 
               {/* ── CALENDAR ── */}
-              <SectionHeader title="Attendance Calendar" icon="calendar-outline" cvw={cvw} isTablet={isTablet} />
+              <SectionHeader title={t("staff.attendanceCalendar", "Attendance Calendar")} icon="calendar-outline" cvw={cvw} isTablet={isTablet} />
               <View style={{
                 backgroundColor: C.card,
                 borderRadius: 20, borderWidth: 1, borderColor: C.borderGold,
@@ -716,11 +718,11 @@ export default function StaffDetailScreen() {
                   paddingTop: 4,
                 }}>
                   {[
-                    { label: "Present", color: "#22c55e" },
-                    { label: "Late", color: "#f97316" },
-                    { label: "Absent", color: "#ef4444" },
-                    { label: "Outside", color: "#3b82f6" },
-                    { label: "Not Marked", color: "#6b7280" },
+                    { label: t("staff.present", "Present"), color: "#22c55e" },
+                    { label: t("staff.late", "Late"), color: "#f97316" },
+                    { label: t("staff.absent", "Absent"), color: "#ef4444" },
+                    { label: t("staff.outside", "Outside"), color: "#3b82f6" },
+                    { label: t("staff.notMarked", "Not Marked"), color: "#6b7280" },
                   ].map((l) => (
                     <View key={l.label} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: l.color }} />
@@ -733,7 +735,7 @@ export default function StaffDetailScreen() {
               {/* ── ATTENDANCE HISTORY ── */}
               {selectedDate && (
                 <>
-                  <SectionHeader title="Attendance History" icon="time-outline" cvw={cvw} isTablet={isTablet} />
+                  <SectionHeader title={t("staff.attendanceHistory", "Attendance History")} icon="time-outline" cvw={cvw} isTablet={isTablet} />
                   <View style={{
                     backgroundColor: C.card,
                     borderRadius: 20, borderWidth: 1, borderColor: C.borderGold,
@@ -760,7 +762,7 @@ export default function StaffDetailScreen() {
                         }}
                       >
                         <Ionicons name="close" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.muted} />
-                        <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>Clear</Text>
+                        <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>{t("staff.clear", "Clear")}</Text>
                       </TouchableOpacity>
                     </View>
 
@@ -768,7 +770,7 @@ export default function StaffDetailScreen() {
                       <View style={{ alignItems: "center", paddingVertical: isTablet ? cvw * 3 : cvw * 8 }}>
                         <Ionicons name="time-outline" size={isTablet ? cvw * 6 : cvw * 12} color={C.muted} />
                         <Text style={{ color: C.muted, marginTop: 10, fontSize: isTablet ? cvw * 2.2 : cvw * 3.8 }}>
-                          No records for {selectedDate}
+                          {t("staff.noRecordsFor", "No records for {{date}}", { date: selectedDate })}
                         </Text>
                       </View>
                     ) : (
@@ -807,7 +809,7 @@ export default function StaffDetailScreen() {
                                 color: C.white, fontWeight: "700",
                                 fontSize: isTablet ? cvw * 2.4 : cvw * 3.8, marginBottom: 3,
                               }}>
-                                {isLogin ? "Check In" : "Check Out"}
+                                {isLogin ? t("staff.checkIn", "Check In") : t("staff.checkOut", "Check Out")}
                               </Text>
                               <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.9 : cvw * 3, marginBottom: 3 }}>
                                 {logDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {logDate.toLocaleDateString()}
@@ -819,7 +821,7 @@ export default function StaffDetailScreen() {
                                     log.location?.displayText ||
                                     (log.location
                                       ? `${Number(log.location.latitude).toFixed(4)}, ${Number(log.location.longitude).toFixed(4)}`
-                                      : "Location unavailable")}
+                                      : t("staff.locationUnavailable", "Location unavailable"))}
                                 </Text>
                               </View>
                             </View>
@@ -847,7 +849,7 @@ export default function StaffDetailScreen() {
               )}
 
               {/* ── TODAY'S ATTENDANCE ── */}
-              <SectionHeader title="Today's Attendance" icon="today-outline" cvw={cvw} isTablet={isTablet} />
+              <SectionHeader title={t("staff.todaysAttendance", "Today's Attendance")} icon="today-outline" cvw={cvw} isTablet={isTablet} />
               <View style={{
                 backgroundColor: C.card,
                 borderRadius: 20, borderWidth: 1, borderColor: C.borderGold,
@@ -856,16 +858,16 @@ export default function StaffDetailScreen() {
               }}>
                 {[
                   {
-                    label: "Check-in", icon: "log-in-outline",
+                    label: t("staff.checkInHyphen", "Check-in"), icon: "log-in-outline",
                     value: todayAttendance?.checkInTime
                       ? new Date(todayAttendance.checkInTime).toLocaleTimeString() : "--",
                   },
                   {
-                    label: "Check-out", icon: "log-out-outline",
+                    label: t("staff.checkOutHyphen", "Check-out"), icon: "log-out-outline",
                     value: todayAttendance?.checkOutTime
                       ? new Date(todayAttendance.checkOutTime).toLocaleTimeString() : "--",
                   },
-                  { label: "Work Hours", icon: "timer-outline", value: workHours },
+                  { label: t("staff.workHours", "Work Hours"), icon: "timer-outline", value: workHours },
                 ].map((row, idx, arr) => (
                   <View
                     key={row.label}
@@ -943,7 +945,7 @@ export default function StaffDetailScreen() {
               <View style={{ alignItems: "center", padding: 30 }}>
                 <Ionicons name="image-outline" size={60} color={C.muted} />
                 <Text style={{ color: C.muted, marginTop: 10, textAlign: "center" }}>
-                  Attendance photo expired (15 day retention policy)
+                  {t("staff.attendancePhotoExpired", "Attendance photo expired (15 day retention policy)")}
                 </Text>
               </View>
             )}
@@ -955,7 +957,7 @@ export default function StaffDetailScreen() {
                 <Text style={{ color: C.muted, fontSize: 12 }}>
                   {selectedAttendance?.location
                     ? `${Number(selectedAttendance.location.latitude).toFixed(4)}, ${Number(selectedAttendance.location.longitude).toFixed(4)}`
-                    : "Location unavailable"}
+                    : t("staff.locationUnavailable", "Location unavailable")}
                 </Text>
               </View>
             )}
@@ -1018,23 +1020,24 @@ function AvatarCircle({ user, initials, avatarLoading, setAvatarLoading, avatarE
 
 // ─── Profile info block ───────────────────────────────────────────────────────
 function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTablet, centered, onUserUpdated, onViewIdProof }) {
+  const { t } = useTranslation();
   const [actionLoading, setActionLoading] = useState(null);
 
   const handleDeactivate = () => {
     Alert.alert(
-      "Deactivate Staff",
-      `Are you sure you want to deactivate ${user.name}? Their account will be disabled.`,
+      t("staff.deactivateStaff", "Deactivate Staff"),
+      t("staff.deactivatePrompt", "Are you sure you want to deactivate {{name}}? Their account will be disabled.", { name: user.name }),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("settings.cancel", "Cancel"), style: "cancel" },
         {
-          text: "Deactivate", style: "destructive",
+          text: t("staff.deactivate", "Deactivate"), style: "destructive",
           onPress: async () => {
             try {
               setActionLoading("deactivate");
               await deactivateUser(user.id);
               navigation.goBack();
             } catch {
-              Alert.alert("Error", "Failed to deactivate staff member");
+              Alert.alert(t("roles.error", "Error"), t("staff.failedToDeactivate", "Failed to deactivate staff member"));
             } finally {
               setActionLoading(null);
             }
@@ -1046,12 +1049,12 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
 
   const handleActivate = () => {
     Alert.alert(
-      "Reactivate Staff",
-      `Restore login access for ${user.name}?`,
+      t("staff.reactivateStaff", "Reactivate Staff"),
+      t("staff.reactivatePrompt", "Restore login access for {{name}}?", { name: user.name }),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("settings.cancel", "Cancel"), style: "cancel" },
         {
-          text: "Reactivate",
+          text: t("staff.reactivate", "Reactivate"),
           onPress: async () => {
             try {
               setActionLoading("activate");
@@ -1059,7 +1062,7 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
               if (onUserUpdated) onUserUpdated((prev) => ({ ...prev, isActive: true }));
               navigation.goBack();
             } catch {
-              Alert.alert("Error", "Failed to reactivate staff member");
+              Alert.alert(t("roles.error", "Error"), t("staff.failedToReactivate", "Failed to reactivate staff member"));
             } finally {
               setActionLoading(null);
             }
@@ -1071,19 +1074,19 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
 
   const handleDelete = () => {
     Alert.alert(
-      "Delete from System",
-      `Permanently delete ${user.name}? This action cannot be undone.`,
+      t("staff.deleteFromSystem", "Delete from System"),
+      t("staff.deletePrompt", "Permanently delete {{name}}? This action cannot be undone.", { name: user.name }),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("settings.cancel", "Cancel"), style: "cancel" },
         {
-          text: "Delete Permanently", style: "destructive",
+          text: t("staff.deletePermanently", "Delete Permanently"), style: "destructive",
           onPress: async () => {
             try {
               setActionLoading("delete");
               await api.delete(`/users/${user.id}/permanent`);
               navigation.goBack();
             } catch {
-              Alert.alert("Error", "Failed to delete staff member");
+              Alert.alert(t("roles.error", "Error"), t("staff.failedToDelete", "Failed to delete staff member"));
             } finally {
               setActionLoading(null);
             }
@@ -1131,7 +1134,7 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
             color: isActive ? C.green : C.red,
             fontWeight: "700", fontSize: isTablet ? cvw * 1.8 : cvw * 2.8, letterSpacing: 0.5,
           }}>
-            {isActive ? "ACTIVE" : "INACTIVE"}
+            {isActive ? t("staff.activeCaps", "ACTIVE") : t("staff.inactiveCaps", "INACTIVE")}
           </Text>
         </View>
       </View>
@@ -1151,7 +1154,7 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
             }}
           >
             <Ionicons name="pencil-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.gold} />
-            <Text style={{ color: C.gold, fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>Edit</Text>
+            <Text style={{ color: C.gold, fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>{t("roles.edit", "Edit")}</Text>
           </TouchableOpacity>
         )}
 
@@ -1168,7 +1171,7 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
           >
             <Ionicons name="id-card-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.blue} />
             <Text style={{ color: C.blue, fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
-              ID Proof
+              {t("staff.idProof", "ID Proof")}
             </Text>
           </TouchableOpacity>
         )}
@@ -1190,7 +1193,7 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
               : <Ionicons name="person-remove-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.red} />
             }
             <Text style={{ color: C.red, fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
-              Deactivate
+              {t("staff.deactivate", "Deactivate")}
             </Text>
           </TouchableOpacity>
         )}
@@ -1212,7 +1215,7 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
               : <Ionicons name="checkmark-circle-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.green} />
             }
             <Text style={{ color: C.green, fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
-              Reactivate
+              {t("staff.reactivate", "Reactivate")}
             </Text>
           </TouchableOpacity>
         )}
@@ -1234,7 +1237,7 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
               : <Ionicons name="trash-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.red} />
             }
             <Text style={{ color: C.red, fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
-              Delete
+              {t("roles.delete", "Delete")}
             </Text>
           </TouchableOpacity>
         )}

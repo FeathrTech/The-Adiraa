@@ -20,6 +20,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useAuthStore } from "../../store/authStore";
 import { can } from "../../config/permissionMap";
 import api from "../../api/axios";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -91,10 +92,11 @@ function useResponsive() {
 // ─── Clock Card — hero style ──────────────────────────────────────────────────
 function ClockCard({ cvw, vh, isTablet }) {
   const [parts, setParts] = useState(() => getNowParts());
+  const { t } = useTranslation();
 
   useEffect(() => {
-    const t = setInterval(() => setParts(getNowParts()), 1000);
-    return () => clearInterval(t);
+    const timeInterval = setInterval(() => setParts(getNowParts()), 1000);
+    return () => clearInterval(timeInterval);
   }, []);
 
   return (
@@ -120,7 +122,7 @@ function ClockCard({ cvw, vh, isTablet }) {
           marginBottom: vh * 0.8,
         }}
       >
-        Current Time
+        {t("attendance.currentTime")}
       </Text>
 
       <Text
@@ -159,7 +161,7 @@ function ClockCard({ cvw, vh, isTablet }) {
             textTransform: "uppercase",
           }}
         >
-          IST
+          {t("attendance.ist")}
         </Text>
         <View style={{ width: 1, height: 10, backgroundColor: C.borderGold }} />
         <Text
@@ -203,6 +205,8 @@ function SiteStatusCard({
         : isNearest
           ? C.blueBorder
           : C.orangeBorder;
+
+  const { t } = useTranslation();
 
   return (
     <View
@@ -258,7 +262,7 @@ function SiteStatusCard({
               marginBottom: 2,
             }}
           >
-            Assigned Site
+            {t("attendance.assignedSite")}
           </Text>
           <Text
             style={{
@@ -280,7 +284,7 @@ function SiteStatusCard({
               textTransform: "uppercase",
               marginTop: 2,
             }}>
-              SELECTED
+              {t("attendance.selected")}
             </Text>
           )}
           {!isSelected && isNearest && (
@@ -292,7 +296,7 @@ function SiteStatusCard({
               textTransform: "uppercase",
               marginTop: 2,
             }}>
-              NEAREST
+              {t("attendance.nearest")}
             </Text>
           )}
         </View>
@@ -308,7 +312,7 @@ function SiteStatusCard({
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <ActivityIndicator size="small" color={C.gold} />
           <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3.2 }}>
-            Fetching location…
+            {t("attendance.fetchingLocation")}
           </Text>
         </View>
       ) : (
@@ -346,7 +350,7 @@ function SiteStatusCard({
                 letterSpacing: 0.5,
               }}
             >
-              {withinRadius ? "IN RANGE" : "OUT OF RANGE"}
+              {withinRadius ? t("attendance.inRange") : t("attendance.outOfRange")}
             </Text>
           </View>
 
@@ -359,7 +363,7 @@ function SiteStatusCard({
                 fontVariant: ["tabular-nums"],
               }}
             >
-              {distance.toFixed(0)} m away
+              {t("attendance.mAway", { distance: distance.toFixed(0) })}
             </Text>
           )}
         </View>
@@ -396,7 +400,7 @@ function SiteStatusCard({
                     textTransform: "uppercase",
                   }}
                 >
-                  Your Current Location
+                  {t("attendance.yourCurrentLocation")}
                 </Text>
               </View>
 
@@ -457,8 +461,8 @@ function SiteStatusCard({
               }}
             >
               {allowOutsideRadius
-                ? "Your role permits check-in outside the site radius. The coordinates above will be recorded."
-                : "Your role does not permit check-in outside the assigned site radius. Please move closer to the site."}
+                ? t("attendance.rolePermitsOutsideIn")
+                : t("attendance.roleDeniesOutsideIn")}
             </Text>
           </View>
         </>
@@ -478,7 +482,10 @@ export default function CheckInScreen() {
 
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [locationPermission, setLocationPermission] = useState(null);
-  const [cameraType, setCameraType] = useState("front");
+  const cameraTypeState = useState("front");
+  const cameraType = cameraTypeState[0];
+  const setCameraType = cameraTypeState[1];
+  const { t } = useTranslation();
 
   const [photo, setPhoto] = useState(null);
   const [realUserLocation, setRealUserLocation] = useState(null);
@@ -553,7 +560,7 @@ export default function CheckInScreen() {
       }
 
     } catch {
-      Alert.alert("Location Error", "Unable to fetch location");
+      Alert.alert(t("attendance.locationError"), t("attendance.unableToFetchLocation"));
     } finally {
       setCheckingLocation(false);
     }
@@ -571,7 +578,7 @@ export default function CheckInScreen() {
         setLocationPermission(locPerm.status === "granted");
 
         if (locPerm.status !== "granted") {
-          Alert.alert("Permission required", "Location access is needed for check-in.");
+          Alert.alert(t("attendance.permissionRequired"), t("attendance.locationAccessNeededIn"));
           setCheckingLocation(false);
           return;
         }
@@ -582,14 +589,14 @@ export default function CheckInScreen() {
         ]);
 
         if (siteRes.status !== "fulfilled") {
-          Alert.alert("Error", "Could not load assigned site");
+          Alert.alert(t("attendance.error"), t("attendance.couldNotLoadSite"));
           setCheckingLocation(false);
           return;
         }
 
         const siteData = siteRes.value.data;
         if (!siteData) {
-          Alert.alert("Error", "No site assigned to your account");
+          Alert.alert(t("attendance.error"), t("attendance.noSiteAssigned"));
           setCheckingLocation(false);
           return;
         }
@@ -603,7 +610,7 @@ export default function CheckInScreen() {
         await fetchLocation(siteData);
       } catch (err) {
         console.log("Bootstrap error:", err?.response?.data || err.message);
-        Alert.alert("Error", "Could not initialise check-in");
+        Alert.alert(t("attendance.error"), t("attendance.couldNotInitialiseIn"));
         setCheckingLocation(false);
       }
     })();
@@ -624,13 +631,13 @@ export default function CheckInScreen() {
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!realUserLocation) {
-      Alert.alert("Location Error", "Location not captured");
+      Alert.alert(t("attendance.locationError"), t("attendance.locationNotCaptured"));
       return;
     }
     if (!withinRadius && !allowOutsideRadius) {
       Alert.alert(
-        "Out of Range",
-        "Your role does not permit check-in outside the site radius."
+        t("attendance.outOfRangeAlert"),
+        t("attendance.roleDeniesAlertIn")
       );
       return;
     }
@@ -656,12 +663,12 @@ export default function CheckInScreen() {
       await api.post("/attendance/checkin", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      Alert.alert("Success", "Check-in successful");
+      Alert.alert(t("attendance.success"), t("attendance.checkInSuccess"));
       navigation.navigate("Dashboard");
     } catch (error) {
       Alert.alert(
-        "Check-in Failed",
-        error.response?.data?.message || "Something went wrong"
+        t("attendance.checkInFailed"),
+        error.response?.data?.message || t("attendance.somethingWentWrong")
       );
     } finally {
       setLoading(false);
@@ -677,17 +684,17 @@ export default function CheckInScreen() {
     !loading;
   const submitDisabled = !canSubmit;
 
-  let btnLabel = "Capture Photo";
+  let btnLabel = t("attendance.capturePhoto");
   let btnIcon = "camera-outline";
   if (photo) {
     if (checkingLocation) {
-      btnLabel = "Checking Location…";
+      btnLabel = t("attendance.checkingLocation");
       btnIcon = "locate-outline";
     } else if (!withinRadius && !allowOutsideRadius) {
-      btnLabel = "Cannot Submit";
+      btnLabel = t("attendance.cannotSubmit");
       btnIcon = "ban-outline";
     } else {
-      btnLabel = "Submit Check-In";
+      btnLabel = t("attendance.submitCheckIn");
       btnIcon = "checkmark-circle-outline";
     }
   }
@@ -706,7 +713,7 @@ export default function CheckInScreen() {
         <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color={C.gold} />
         <Text style={{ color: C.muted, marginTop: 12, letterSpacing: 1.5, fontSize: 13 }}>
-          REQUESTING PERMISSIONS
+          {t("attendance.requestingPermissions")}
         </Text>
       </SafeAreaView>
     );
@@ -749,7 +756,7 @@ export default function CheckInScreen() {
               marginBottom: 2,
             }}
           >
-            Attendance
+            {t("attendance.attendanceOverview")}
           </Text>
           <Text
             style={{
@@ -759,7 +766,7 @@ export default function CheckInScreen() {
               letterSpacing: -0.5,
             }}
           >
-            Check In
+            {t("attendance.checkIn")}
           </Text>
         </View>
 
@@ -824,7 +831,7 @@ export default function CheckInScreen() {
                       fontSize: isTablet ? cvw * 1.8 : cvw * 3.2,
                     }}
                   >
-                    Flip
+                    {t("attendance.flip")}
                   </Text>
                 </TouchableOpacity>
 
@@ -846,7 +853,7 @@ export default function CheckInScreen() {
                     }}
                   >
                     <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>
-                      Position your face in frame
+                      {t("attendance.positionFace")}
                     </Text>
                   </View>
                 </View>
@@ -872,7 +879,7 @@ export default function CheckInScreen() {
                 letterSpacing: 0.5,
               }}
             >
-              Selected Site: {selectedSite.name}
+              {t("attendance.selectedSiteLabel", { siteName: selectedSite.name })}
             </Text>
           )}
 
@@ -934,7 +941,7 @@ export default function CheckInScreen() {
                 color={C.muted}
               />
               <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.5 }}>
-                Retake Photo
+                {t("attendance.retakePhoto")}
               </Text>
             </TouchableOpacity>
           )}

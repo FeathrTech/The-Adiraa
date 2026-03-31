@@ -14,6 +14,7 @@ import { useAuthStore } from "../../store/authStore";
 import { useEffect, useState, useRef } from "react";
 import { fetchAttendanceDashboard } from "../../api/attendanceApi";
 import { useRealtime } from "../../hooks/useRealtime";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -110,6 +111,7 @@ export default function AdminAttendanceDashboard() {
   const permissions = useAuthStore((s) => s.permissions) || [];
   const can = (key) => permissions.includes(key);
   const { vw, vh, cvw, isTablet } = useResponsive();
+  const { t } = useTranslation();
 
   const [summary, setSummary] = useState({ all: null, present: null, absent: null, late: null });
   const [loading, setLoading] = useState(true);
@@ -253,10 +255,10 @@ export default function AdminAttendanceDashboard() {
   // ── Items list ────────────────────────────────────────────────────────────
   const ItemList = () => (
     <>
-      <Item title="Total Staff" filter="all" permission="attendance.view.dashboard_summary" icon="people-outline" count={summary.all} />
-      <Item title="Present Today" filter="present" permission="attendance.view.live_status" icon="checkmark-circle-outline" count={summary.present} />
-      <Item title="Absent Today" filter="absent" permission="attendance.view.live_status" icon="close-circle-outline" count={summary.absent} />
-      <Item title="Late Today" filter="late" permission="attendance.view.live_status" icon="time-outline" count={summary.late} />
+      <Item title={t("attendance.totalStaff")} filter="all" permission="attendance.view.dashboard_summary" icon="people-outline" count={summary.all} />
+      <Item title={t("attendance.presentToday")} filter="present" permission="attendance.view.live_status" icon="checkmark-circle-outline" count={summary.present} />
+      <Item title={t("attendance.absentToday")} filter="absent" permission="attendance.view.live_status" icon="close-circle-outline" count={summary.absent} />
+      <Item title={t("attendance.lateToday")} filter="late" permission="attendance.view.live_status" icon="time-outline" count={summary.late} />
     </>
   );
 
@@ -286,7 +288,7 @@ export default function AdminAttendanceDashboard() {
           letterSpacing: 0.5,
           textTransform: "uppercase",
         }}>
-          View Attendance Report
+          {t("attendance.viewReport")}
         </Text>
       </TouchableOpacity>
     );
@@ -317,7 +319,7 @@ export default function AdminAttendanceDashboard() {
               letterSpacing: -0.3,
               marginBottom: vh * 0.5,
             }}>
-              Attendance
+              {t("attendance.attendanceOverview")}
             </Text>
             <Text style={{
               color: C.gold,
@@ -328,7 +330,7 @@ export default function AdminAttendanceDashboard() {
               textTransform: "uppercase",
               marginBottom: vh * 2.8,
             }}>
-              Overview
+              {t("attendance.overview")}
             </Text>
 
             <Divider mb={vh * 2.5} />
@@ -368,7 +370,7 @@ export default function AdminAttendanceDashboard() {
             letterSpacing: -0.3,
             marginBottom: vh * 0.5,
           }}>
-            Attendance
+            {t("attendance.attendanceOverview")}
           </Text>
           <Text style={{
             color: C.gold,
@@ -379,7 +381,7 @@ export default function AdminAttendanceDashboard() {
             textTransform: "uppercase",
             marginBottom: vh * 3,
           }}>
-            Overview
+            {t("attendance.overview")}
           </Text>
 
           <Divider mb={vh * 3} />
@@ -402,11 +404,12 @@ export default function AdminAttendanceDashboard() {
 
 // ─── Tablet 2-col item grid ───────────────────────────────────────────────────
 function TabletItemGrid({ can, navigation, cvw, vh, summary, loading }) {
+  const { t } = useTranslation();
   const items = [
-    { title: "Total Staff", filter: "all", permission: "attendance.view.dashboard_summary", icon: "people-outline", count: summary.all },
-    { title: "Present Today", filter: "present", permission: "attendance.view.live_status", icon: "checkmark-circle-outline", count: summary.present },
-    { title: "Absent Today", filter: "absent", permission: "attendance.view.live_status", icon: "close-circle-outline", count: summary.absent },
-    { title: "Late Today", filter: "late", permission: "attendance.view.live_status", icon: "time-outline", count: summary.late },
+    { title: t("attendance.totalStaff"), filter: "all", permission: "attendance.view.dashboard_summary", icon: "people-outline", count: summary.all },
+    { title: t("attendance.presentToday"), filter: "present", permission: "attendance.view.live_status", icon: "checkmark-circle-outline", count: summary.present },
+    { title: t("attendance.absentToday"), filter: "absent", permission: "attendance.view.live_status", icon: "close-circle-outline", count: summary.absent },
+    { title: t("attendance.lateToday"), filter: "late", permission: "attendance.view.live_status", icon: "time-outline", count: summary.late },
   ].filter((item) => can(item.permission));
 
   const rows = [];

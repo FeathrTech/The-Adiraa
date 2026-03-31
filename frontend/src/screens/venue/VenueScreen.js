@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../store/authStore";
 import { useSiteStore } from "../../store/siteStore";
 import { fetchSites } from "../../api/siteApi";
@@ -42,6 +43,7 @@ function useResponsive() {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function VenueScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { vw, vh, cvw, isTablet } = useResponsive();
 
@@ -79,7 +81,7 @@ export default function VenueScreen() {
       <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: C.bg }}>
         <StatusBar barStyle="light-content" />
         <Ionicons name="lock-closed-outline" size={48} color={C.faint} />
-        <Text style={{ color: C.muted, marginTop: 12, fontSize: 15 }}>No Access</Text>
+        <Text style={{ color: C.muted, marginTop: 12, fontSize: 15 }}>{t("roles.noAccess", "No Access")}</Text>
       </SafeAreaView>
     );
   }
@@ -111,7 +113,7 @@ export default function VenueScreen() {
       >
         <Ionicons name="arrow-back" size={isTablet ? cvw * 2.2 : 18} color={C.gold} />
         {isTablet && (
-          <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>Back</Text>
+          <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>{t("settings.cancel", "Back")}</Text>
         )}
       </TouchableOpacity>
 
@@ -124,7 +126,7 @@ export default function VenueScreen() {
           textTransform: "uppercase",
           marginBottom: 2,
         }}>
-          Management
+          {t("venue.managementLabel", "Management")}
         </Text>
         <Text style={{
           color: C.white,
@@ -132,7 +134,7 @@ export default function VenueScreen() {
           fontWeight: "800",
           letterSpacing: -0.3,
         }}>
-          Venues
+          {t("venue.venuesLabel", "Venues")}
         </Text>
       </View>
     </View>
@@ -156,7 +158,7 @@ export default function VenueScreen() {
             <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
               <ActivityIndicator size="large" color={C.gold} />
               <Text style={{ color: C.muted, marginTop: 12, fontSize: isTablet ? cvw * 2.2 : cvw * 3.5, letterSpacing: 1.5 }}>
-                LOADING
+                {t("venue.loading", "LOADING")}
               </Text>
             </View>
           </View>
@@ -206,14 +208,14 @@ export default function VenueScreen() {
                 fontWeight: "700",
                 marginBottom: 6,
               }}>
-                No Venues Yet
+                {t("venue.noVenuesYet", "No Venues Yet")}
               </Text>
               <Text style={{
                 color: C.muted,
                 fontSize: isTablet ? cvw * 2.2 : cvw * 3.5,
                 textAlign: "center",
               }}>
-                No banquet sites have been created yet
+                {t("venue.noBanquetSites", "No banquet sites have been created yet")}
               </Text>
 
               {canCreate && (
@@ -238,7 +240,7 @@ export default function VenueScreen() {
                     fontSize: isTablet ? cvw * 2.6 : cvw * 3.8,
                     letterSpacing: 0.3,
                   }}>
-                    Create Your First Site
+                    {t("venue.createFirstSite", "Create Your First Site")}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -419,7 +421,7 @@ export default function VenueScreen() {
                 }}
               >
                 <Ionicons name="arrow-back" size={cvw * 2.2} color={C.gold} />
-                <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>Back</Text>
+                <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>{t("settings.cancel", "Back")}</Text>
               </TouchableOpacity>
 
               <View>
@@ -427,13 +429,13 @@ export default function VenueScreen() {
                   color: C.gold, fontSize: cvw * 2, letterSpacing: 3,
                   fontWeight: "700", textTransform: "uppercase", marginBottom: 2,
                 }}>
-                  Management
+                  {t("venue.managementLabel", "Management")}
                 </Text>
                 <Text style={{
                   color: C.white, fontSize: cvw * 3.5,
                   fontWeight: "800", letterSpacing: -0.3,
                 }}>
-                  Venues
+                  {t("venue.venuesLabel", "Venues")}
                 </Text>
               </View>
             </View>
@@ -454,11 +456,11 @@ export default function VenueScreen() {
                 }}
               >
                 <Ionicons name="add-circle-outline" size={cvw * 2.4} color="#000" />
-                <Text style={{
+                  <Text style={{
                   color: "#000", fontWeight: "800",
                   fontSize: cvw * 2.4, letterSpacing: 0.3,
                 }}>
-                  Add Site
+                  {t("venue.addSite", "Add Site")}
                 </Text>
               </TouchableOpacity>
             )}

@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useAuthStore } from "../../store/authStore";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -39,6 +40,7 @@ function useResponsive() {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { permissions, logout } = useAuthStore();
   const { vw, vh, cvw, isTablet } = useResponsive();
@@ -46,9 +48,9 @@ export default function SettingsScreen() {
   const can = (key) => permissions?.includes(key);
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: logout },
+    Alert.alert(t("settings.logout"), t("settings.logoutConfirm"), [
+      { text: t("settings.cancel"), style: "cancel" },
+      { text: t("settings.logout"), style: "destructive", onPress: logout },
     ]);
   };
 
@@ -153,7 +155,7 @@ export default function SettingsScreen() {
         letterSpacing: 1.5,
         textTransform: "uppercase",
       }}>
-        Sign Out
+        {t("settings.signOut")}
       </Text>
     </TouchableOpacity>
   );
@@ -163,8 +165,8 @@ export default function SettingsScreen() {
     <>
       {can("role.view") && (
         <Item
-          title="Roles"
-          hint="Manage permission roles for your team"
+          title={t("settings.rolesMenu")}
+          hint={t("settings.rolesMenuHint")}
           icon="shield-outline"
           onPress={() => navigation.navigate("Roles")}
         />
@@ -172,8 +174,8 @@ export default function SettingsScreen() {
 
       {can("staff.view") && (
         <Item
-          title="Staff"
-          hint="View and manage staff accounts"
+          title={t("settings.staffMenu")}
+          hint={t("settings.staffMenuHint")}
           icon="people-outline"
           onPress={() => navigation.navigate("Staff")}
         />
@@ -181,8 +183,8 @@ export default function SettingsScreen() {
 
       {can("settings.attendance.edit") && (
         <Item
-          title="Attendance Configuration"
-          hint="Set shift times, radius rules, and check-in policies"
+          title={t("settings.attendanceConfigMenu")}
+          hint={t("settings.attendanceConfigMenuHint")}
           icon="time-outline"
           onPress={() => navigation.navigate("AttendanceConfig")}
         />
@@ -240,9 +242,9 @@ export default function SettingsScreen() {
 
   // Build visible nav items for 2-col grid
   const navItems = [
-    can("role.view") && { title: "Roles", hint: "Manage permission roles", icon: "shield-outline", onPress: () => navigation.navigate("Roles") },
-    can("staff.view") && { title: "Staff", hint: "View and manage staff accounts", icon: "people-outline", onPress: () => navigation.navigate("Staff") },
-    can("settings.attendance.edit") && { title: "Attendance Configuration", hint: "Shift times, radius and policies", icon: "time-outline", onPress: () => navigation.navigate("AttendanceConfig") },
+    can("role.view") && { title: t("settings.rolesMenu"), hint: t("settings.rolesMenuHint"), icon: "shield-outline", onPress: () => navigation.navigate("Roles") },
+    can("staff.view") && { title: t("settings.staffMenu"), hint: t("settings.staffMenuHint"), icon: "people-outline", onPress: () => navigation.navigate("Staff") },
+    can("settings.attendance.edit") && { title: t("settings.attendanceConfigMenu"), hint: t("settings.attendanceConfigMenuHint"), icon: "time-outline", onPress: () => navigation.navigate("AttendanceConfig") },
     (can("settings.notifications.view") || can("settings.notifications.edit")) && { title: "Notifications", hint: "Push alerts and preferences", icon: "notifications-outline", onPress: () => navigation.navigate("Notifications") },
   ].filter(Boolean);
 
@@ -291,6 +293,7 @@ export default function SettingsScreen() {
 
 // ─── Screen header ────────────────────────────────────────────────────────────
 function Header({ navigation, cvw, isTablet }) {
+  const { t } = useTranslation();
   return (
     <View style={{
       flexDirection: "row",
@@ -323,14 +326,14 @@ function Header({ navigation, cvw, isTablet }) {
           letterSpacing: 3, fontWeight: "700",
           textTransform: "uppercase", marginBottom: 2,
         }}>
-          Admin
+          {t("settings.adminTitle")}
         </Text>
         <Text style={{
           color: C.white,
           fontSize: isTablet ? cvw * 3.5 : cvw * 5.5,
           fontWeight: "800", letterSpacing: -0.3,
         }}>
-          Settings
+          {t("settings.settingsTitle")}
         </Text>
       </View>
     </View>

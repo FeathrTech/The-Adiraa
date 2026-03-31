@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { createEvent, updateEvent } from "../../api/eventsApi";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -57,6 +58,7 @@ function useResponsive() {
 
 // ─── Field label ──────────────────────────────────────────────────────────────
 function FieldLabel({ icon, label, hint, optional, cvw, isTablet }) {
+    const { t } = useTranslation();
     return (
         <View style={{ marginBottom: 6 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -66,7 +68,7 @@ function FieldLabel({ icon, label, hint, optional, cvw, isTablet }) {
                 </Text>
                 {optional && (
                     <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3, fontWeight: "400" }}>
-                        (optional)
+                        {t("events.optional")}
                     </Text>
                 )}
             </View>
@@ -81,6 +83,7 @@ function FieldLabel({ icon, label, hint, optional, cvw, isTablet }) {
 
 // ─── Styled input ─────────────────────────────────────────────────────────────
 function StyledInput({ value, onChangeText, placeholder, multiline, keyboardType, isPhone, maxLength, showCount, cvw, isTablet }) {
+    const { t } = useTranslation();
     const [focused, setFocused] = useState(false);
 
     const handleChange = (text) => {
@@ -132,7 +135,7 @@ function StyledInput({ value, onChangeText, placeholder, multiline, keyboardType
                 </View>
                 {currentLength > 0 && currentLength < 10 && (
                     <Text style={{ color: C.red, fontSize: isTablet ? cvw * 1.6 : cvw * 2.8, marginTop: 4, marginLeft: 4 }}>
-                        Phone number must be 10 digits
+                        {t("events.phoneLengthError")}
                     </Text>
                 )}
             </View>
@@ -210,6 +213,7 @@ function SectionHeader({ title, icon, cvw, isTablet }) {
 
 // ─── Screen header ────────────────────────────────────────────────────────────
 function ScreenHeader({ navigation, isEdit, dateLabel, cvw, isTablet }) {
+    const { t } = useTranslation();
     return (
         <View style={{
             paddingHorizontal: isTablet ? cvw * 3 : cvw * 5,
@@ -238,13 +242,13 @@ function ScreenHeader({ navigation, isEdit, dateLabel, cvw, isTablet }) {
                     color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8,
                     fontWeight: "700", letterSpacing: 3, textTransform: "uppercase", marginBottom: 2,
                 }}>
-                    {isEdit ? "Editing Event" : "New Booking"}
+                    {isEdit ? t("events.editingEvent") : t("events.newBooking")}
                 </Text>
                 <Text style={{
                     color: C.white, fontSize: isTablet ? cvw * 3.2 : cvw * 5.5,
                     fontWeight: "800", letterSpacing: -0.3,
                 }}>
-                    {isEdit ? "Edit Event" : "Add Event"}
+                    {isEdit ? t("events.editEvent") : t("events.addEvent")}
                 </Text>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
                     <Ionicons name="calendar-outline" size={isTablet ? cvw * 1.8 : cvw * 3} color={C.muted} />
@@ -262,6 +266,7 @@ function FormBody({
     form, update, loading, isEdit, halls, bookedSlots,
     bookedHallSlots, handleSubmit, vw, cvw, isTablet,
 }) {
+    const { t } = useTranslation();
     /*
      bookedHallSlots: Array of { hallName, eventSlot } objects where status === "booked"
      Used to:
@@ -299,64 +304,64 @@ function FormBody({
             showsVerticalScrollIndicator={false}
         >
             {/* ── EVENT DETAILS ── */}
-            <SectionHeader title="Event Details" icon="calendar-outline" cvw={cvw} isTablet={isTablet} />
+            <SectionHeader title={t("events.eventDetails")} icon="calendar-outline" cvw={cvw} isTablet={isTablet} />
 
             <FieldLabel
-                icon="ribbon-outline" label="Event Title"
-                hint="Name of the event or function (e.g. Singh Wedding Reception)"
+                icon="ribbon-outline" label={t("events.eventTitle")}
+                hint={t("events.eventTitleHint")}
                 cvw={cvw} isTablet={isTablet}
             />
             <StyledInput
                 value={form.title}
                 onChangeText={(v) => update("title", v)}
-                placeholder="e.g. Singh Wedding Reception, Corporate Gala 2025"
+                placeholder={t("events.eventTitlePlaceholder")}
                 maxLength={LIMITS.title} showCount
                 cvw={cvw} isTablet={isTablet}
             />
 
             <FieldLabel
-                icon="document-text-outline" label="Notes"
-                hint="Special requirements, décor preferences, dietary notes, etc."
+                icon="document-text-outline" label={t("events.notes")}
+                hint={t("events.notesHint")}
                 cvw={cvw} isTablet={isTablet}
             />
             <StyledInput
                 value={form.notes}
                 onChangeText={(v) => update("notes", v)}
-                placeholder="e.g. Vegan menu required, floral arrangement on main stage, live band setup..."
+                placeholder={t("events.notesPlaceholder")}
                 multiline maxLength={LIMITS.notes} showCount
                 cvw={cvw} isTablet={isTablet}
             />
 
             {/* ── CLIENT INFO ── */}
-            <SectionHeader title="Client Information" icon="person-outline" cvw={cvw} isTablet={isTablet} />
+            <SectionHeader title={t("events.clientInformation")} icon="person-outline" cvw={cvw} isTablet={isTablet} />
 
             {isTablet ? (
                 <View style={{ flexDirection: "row", gap: cvw * 3 }}>
                     <View style={{ flex: 1 }}>
-                        <FieldLabel icon="person-circle-outline" label="Client Name" hint="Full name of the booking contact" cvw={cvw} isTablet={isTablet} />
-                        <StyledInput value={form.clientName} onChangeText={(v) => update("clientName", v)} placeholder="e.g. Priya Sharma" maxLength={LIMITS.clientName} showCount cvw={cvw} isTablet={isTablet} />
+                        <FieldLabel icon="person-circle-outline" label={t("events.clientName")} hint={t("events.clientNameHint")} cvw={cvw} isTablet={isTablet} />
+                        <StyledInput value={form.clientName} onChangeText={(v) => update("clientName", v)} placeholder={t("events.clientNamePlaceholder")} maxLength={LIMITS.clientName} showCount cvw={cvw} isTablet={isTablet} />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <FieldLabel icon="call-outline" label="Contact Number" hint="Phone or WhatsApp number" cvw={cvw} isTablet={isTablet} />
+                        <FieldLabel icon="call-outline" label={t("events.contactNumber")} hint={t("events.contactNumberHint")} cvw={cvw} isTablet={isTablet} />
                         <StyledInput value={form.clientContact} onChangeText={(v) => update("clientContact", v)} placeholder="e.g. 9876543210" keyboardType="phone-pad" isPhone cvw={cvw} isTablet={isTablet} />
                     </View>
                 </View>
             ) : (
                 <>
-                    <FieldLabel icon="person-circle-outline" label="Client Name" hint="Full name of the booking contact" cvw={cvw} isTablet={isTablet} />
-                    <StyledInput value={form.clientName} onChangeText={(v) => update("clientName", v)} placeholder="e.g. Priya Sharma" maxLength={LIMITS.clientName} showCount cvw={cvw} isTablet={isTablet} />
-                    <FieldLabel icon="call-outline" label="Contact Number" hint="Phone or WhatsApp number" cvw={cvw} isTablet={isTablet} />
+                    <FieldLabel icon="person-circle-outline" label={t("events.clientName")} hint={t("events.clientNameHint")} cvw={cvw} isTablet={isTablet} />
+                    <StyledInput value={form.clientName} onChangeText={(v) => update("clientName", v)} placeholder={t("events.clientNamePlaceholder")} maxLength={LIMITS.clientName} showCount cvw={cvw} isTablet={isTablet} />
+                    <FieldLabel icon="call-outline" label={t("events.contactNumber")} hint={t("events.contactNumberHint")} cvw={cvw} isTablet={isTablet} />
                     <StyledInput value={form.clientContact} onChangeText={(v) => update("clientContact", v)} placeholder="e.g. 9876543210" keyboardType="phone-pad" isPhone cvw={cvw} isTablet={isTablet} />
                 </>
             )}
 
             {/* ── BOOKING OPTIONS ── */}
-            <SectionHeader title="Booking Options" icon="options-outline" cvw={cvw} isTablet={isTablet} />
+            <SectionHeader title={t("events.bookingOptions")} icon="options-outline" cvw={cvw} isTablet={isTablet} />
 
             {/* ── SLOT PICKER ── */}
             <FieldLabel
-                icon="time-outline" label="Event Slot"
-                hint="Choose the meal slot for this booking"
+                icon="time-outline" label={t("events.eventSlot")}
+                hint={t("events.eventSlotHint")}
                 cvw={cvw} isTablet={isTablet}
             />
             <View style={{ flexDirection: "row", gap: cvw * 3, marginBottom: isTablet ? cvw * 2 : cvw * 5 }}>
@@ -399,11 +404,11 @@ function FormBody({
                                     fontSize: isTablet ? cvw * 2.4 : cvw * 3.8,
                                     textTransform: "capitalize",
                                 }}>
-                                    {slot}
+                                    {t(`events.${slot}`)}
                                 </Text>
                                 {isDisabled && (
                                     <Text style={{ fontSize: isTablet ? cvw * 1.8 : cvw * 2.8, color: C.red, marginTop: 1 }}>
-                                        Already booked
+                                        {t("events.alreadyBooked")}
                                     </Text>
                                 )}
                             </View>
@@ -414,8 +419,8 @@ function FormBody({
 
             {/* ── STATUS PICKER ── */}
             <FieldLabel
-                icon="flag-outline" label="Booking Status"
-                hint="Current stage of this booking"
+                icon="flag-outline" label={t("events.bookingStatus")}
+                hint={t("events.bookingStatusHint")}
                 cvw={cvw} isTablet={isTablet}
             />
 
@@ -429,7 +434,7 @@ function FormBody({
                 }}>
                     <Ionicons name="warning-outline" size={isTablet ? cvw * 2.2 : 16} color={C.orange} style={{ marginTop: 1 }} />
                     <Text style={{ color: C.orange, fontSize: isTablet ? cvw * 2 : cvw * 3.2, flex: 1, lineHeight: 18 }}>
-                        This slot is already confirmed for <Text style={{ fontWeight: "700" }}>{form.hallName}</Text>. Only In Talks entries are allowed — the slot cannot be booked again.
+                        {t("events.slotConfirmedFor")} <Text style={{ fontWeight: "700" }}>{form.hallName}</Text>. {t("events.onlyInTalksAllowed")}
                     </Text>
                 </View>
             )}
@@ -475,11 +480,11 @@ function FormBody({
                                     fontSize: isTablet ? cvw * 2.4 : cvw * 3.8,
                                     textTransform: "capitalize",
                                 }}>
-                                    {s.replace("_", " ")}
+                                    {t(`events.${s === "in_talks" ? "inTalks" : s}`)}
                                 </Text>
                                 {isDisabled && (
                                     <Text style={{ fontSize: isTablet ? cvw * 1.8 : cvw * 2.8, color: C.red, marginTop: 1 }}>
-                                        Slot confirmed
+                                        {t("events.slotConfirmed")}
                                     </Text>
                                 )}
                             </View>
@@ -492,8 +497,8 @@ function FormBody({
             {halls.length > 0 && (
                 <>
                     <FieldLabel
-                        icon="business-outline" label="Hall"
-                        hint="Select which hall this event will be held in"
+                        icon="business-outline" label={t("events.hall")}
+                        hint={t("events.hallHint")}
                         optional cvw={cvw} isTablet={isTablet}
                     />
                     <ScrollView
@@ -519,7 +524,7 @@ function FormBody({
                                 fontWeight: !form.hallName ? "700" : "500",
                                 fontSize: isTablet ? cvw * 2.2 : cvw * 3.5,
                             }}>
-                                None
+                                {t("events.none")}
                             </Text>
                         </TouchableOpacity>
 
@@ -604,7 +609,7 @@ function FormBody({
                     letterSpacing: 0.3,
                     textTransform: "uppercase",
                 }}>
-                    {loading ? "Saving…" : isEdit ? "Save Changes" : "Create Event"}
+                    {loading ? t("events.savingBtn") : isEdit ? t("events.saveChangesBtn") : t("events.createEventBtn")}
                 </Text>
             </TouchableOpacity>
         </ScrollView>
@@ -613,6 +618,7 @@ function FormBody({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function EventFormScreen() {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const route = useRoute();
     const { vw, vh, cvw, isTablet } = useResponsive();
@@ -682,11 +688,11 @@ export default function EventFormScreen() {
     };
 
     const handleSubmit = async () => {
-        if (!form.title.trim()) { Alert.alert("Validation", "Event title is required."); return; }
-        if (form.title.trim().length < 3) { Alert.alert("Validation", "Event title must be at least 3 characters."); return; }
-        if (!form.clientName.trim()) { Alert.alert("Validation", "Client name is required."); return; }
-        if (form.clientName.trim().length < 2) { Alert.alert("Validation", "Client name must be at least 2 characters."); return; }
-        if (form.clientContact && form.clientContact.length !== 10) { Alert.alert("Validation", "Contact number must be exactly 10 digits."); return; }
+        if (!form.title.trim()) { Alert.alert(t("events.validation"), t("events.eventTitleRequired")); return; }
+        if (form.title.trim().length < 3) { Alert.alert(t("events.validation"), t("events.eventTitleMin")); return; }
+        if (!form.clientName.trim()) { Alert.alert(t("events.validation"), t("events.clientNameRequired")); return; }
+        if (form.clientName.trim().length < 2) { Alert.alert(t("events.validation"), t("events.clientNameMin")); return; }
+        if (form.clientContact && form.clientContact.length !== 10) { Alert.alert(t("events.validation"), t("events.contactNumberLen")); return; }
 
         try {
             setLoading(true);

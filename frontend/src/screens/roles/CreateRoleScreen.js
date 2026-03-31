@@ -18,6 +18,7 @@ import { fetchPermissions } from "../../api/permissionApi";
 import { useNavigation } from "@react-navigation/native";
 import { useAuthStore } from "../../store/authStore";
 import { PERMISSION_GROUPS, can } from "../../config/permissionMap";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -80,6 +81,7 @@ function SectionDivider({ label, cvw, vh, isTablet }) {
 
 // ─── Screen header ────────────────────────────────────────────────────────────
 function ScreenHeader({ navigation, selectedCount, totalCount, cvw, vw, vh, isTablet }) {
+  const { t } = useTranslation();
   return (
     <View style={{
       flexDirection: "row", alignItems: "center",
@@ -109,13 +111,13 @@ function ScreenHeader({ navigation, selectedCount, totalCount, cvw, vw, vh, isTa
           color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8,
           letterSpacing: 3, fontWeight: "700", textTransform: "uppercase", marginBottom: 2,
         }}>
-          Role Management
+          {t("roles.roleManagement")}
         </Text>
         <Text style={{
           color: C.white, fontSize: isTablet ? cvw * 3.5 : cvw * 5.5,
           fontWeight: "800", letterSpacing: -0.3,
         }}>
-          Create Role
+          {t("roles.createRole")}
         </Text>
       </View>
 
@@ -135,7 +137,7 @@ function ScreenHeader({ navigation, selectedCount, totalCount, cvw, vw, vh, isTa
           {selectedCount}/{totalCount}
         </Text>
         <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.6 : cvw * 2.4, letterSpacing: 1 }}>
-          PERMS
+          {t("roles.perms")}
         </Text>
       </View>
     </View>
@@ -144,6 +146,7 @@ function ScreenHeader({ navigation, selectedCount, totalCount, cvw, vw, vh, isTa
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CreateRoleScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const userPermissions = useAuthStore((s) => s.permissions);
   const { vw, vh, cvw, isTablet } = useResponsive();
@@ -196,7 +199,7 @@ export default function CreateRoleScreen() {
   const handleCreate = async () => {
     if (!roleName.trim()) return;
     if (roleName.trim().length < ROLE_NAME_MIN) {
-      Alert.alert("Validation", `Role name must be at least ${ROLE_NAME_MIN} characters.`);
+      Alert.alert(t("roles.validation"), t("roles.roleNameMin", { min: ROLE_NAME_MIN }));
       return;
     }
     try {
@@ -277,18 +280,18 @@ export default function CreateRoleScreen() {
                   color: C.white, fontWeight: "700",
                   fontSize: isTablet ? cvw * 2.2 : cvw * 3.8,
                 }}>
-                  Role Name
+                  {t("roles.roleName")}
                 </Text>
               </View>
               <Text style={{
                 color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3,
                 marginBottom: 8, marginLeft: isTablet ? cvw * 2.5 : cvw * 5.5,
               }}>
-                A unique name for this permission role (e.g. Manager, Supervisor)
+                {t("roles.roleNameHint")}
               </Text>
 
               <TextInput
-                placeholder="e.g. Manager, Supervisor, Front Desk"
+                placeholder={t("roles.roleNamePlaceholder")}
                 placeholderTextColor={C.muted}
                 value={roleName}
                 onChangeText={(text) => {
@@ -330,12 +333,12 @@ export default function CreateRoleScreen() {
                   marginTop: 2,
                   marginLeft: 2,
                 }}>
-                  Role name must be at least {ROLE_NAME_MIN} characters
+                  {t("roles.roleNameMin", { min: ROLE_NAME_MIN })}
                 </Text>
               )}
             </View>
 
-            <SectionDivider label="Permissions" cvw={cvw} vh={vh} isTablet={isTablet} />
+            <SectionDivider label={t("roles.permissions")} cvw={cvw} vh={vh} isTablet={isTablet} />
 
             {/* ── SELECT ALL ROW ── */}
             <View style={{
@@ -370,10 +373,10 @@ export default function CreateRoleScreen() {
                     color: C.white, fontWeight: "700",
                     fontSize: isTablet ? cvw * 2.6 : cvw * 4,
                   }}>
-                    Select All Permissions
+                    {t("roles.selectAllPermissions")}
                   </Text>
                   <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3, marginTop: 2 }}>
-                    {selectedCount} of {totalCount} selected
+                    {t("roles.countSelected", { selectedCount, totalCount })}
                   </Text>
                 </View>
               </View>
@@ -432,7 +435,7 @@ export default function CreateRoleScreen() {
                           {groupName}
                         </Text>
                         <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3, marginTop: 2 }}>
-                          {groupCount} / {groupIds.length} selected
+                          {t("roles.countSelected", { selectedCount: groupCount, totalCount: groupIds.length })}
                         </Text>
                       </View>
                     </View>
@@ -531,7 +534,7 @@ export default function CreateRoleScreen() {
                 fontSize: isTablet ? cvw * 2.6 : cvw * 4,
                 letterSpacing: 0.3, textTransform: "uppercase",
               }}>
-                {loading ? "Creating…" : "Create Role"}
+                {loading ? t("roles.creatingRole") : t("roles.createRole")}
               </Text>
             </TouchableOpacity>
 

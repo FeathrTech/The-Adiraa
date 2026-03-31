@@ -6,6 +6,7 @@ import Constants from "expo-constants";
 
 import MainNavigator from "./src/navigation/MainNavigator";
 import "./global.css";
+import "./src/i18n/translations";
 
 // Configure notification behavior
 Notifications.setNotificationHandler({

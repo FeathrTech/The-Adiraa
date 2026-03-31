@@ -15,6 +15,7 @@ import { Calendar } from "react-native-calendars";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../../store/authStore";
+import { useTranslation } from "react-i18next";
 import api from "../../api/axios";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
@@ -99,13 +100,13 @@ function isPhotoExpired(attendanceDateStr) {
   return diffDays > 15;
 }
 
-function getStatusMeta(record) {
-  if (!record) return { label: "Absent", color: C.red, bg: C.redBg, border: C.redBorder, dot: "#ef4444" };
-  if (record.isAbsent) return { label: "Absent", color: C.red, bg: C.redBg, border: C.redBorder, dot: "#ef4444" };
-  if (record.checkOutTime) return { label: record.isLate ? "Late • Done" : "Completed", color: C.green, bg: C.greenBg, border: C.greenBorder, dot: "#22c55e" };
-  if (record.checkInTime && record.isLate) return { label: "Late", color: C.orange, bg: C.orangeBg, border: C.orangeBorder, dot: "#f97316" };
-  if (record.checkInTime) return { label: "Present", color: C.goldLight, bg: "rgba(201,162,39,0.12)", border: C.borderGold, dot: C.gold };
-  return { label: "Absent", color: C.red, bg: C.redBg, border: C.redBorder, dot: "#ef4444" };
+function getStatusMeta(t, record) {
+  if (!record) return { label: t("attendance.absent"), color: C.red, bg: C.redBg, border: C.redBorder, dot: "#ef4444" };
+  if (record.isAbsent) return { label: t("attendance.absent"), color: C.red, bg: C.redBg, border: C.redBorder, dot: "#ef4444" };
+  if (record.checkOutTime) return { label: record.isLate ? `${t("attendance.late")} • ${t("attendance.completed")}` : t("attendance.completed"), color: C.green, bg: C.greenBg, border: C.greenBorder, dot: "#22c55e" };
+  if (record.checkInTime && record.isLate) return { label: t("attendance.late"), color: C.orange, bg: C.orangeBg, border: C.orangeBorder, dot: "#f97316" };
+  if (record.checkInTime) return { label: t("attendance.present"), color: C.goldLight, bg: "rgba(201,162,39,0.12)", border: C.borderGold, dot: C.gold };
+  return { label: t("attendance.absent"), color: C.red, bg: C.redBg, border: C.redBorder, dot: "#ef4444" };
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -113,6 +114,7 @@ export default function StaffAttendanceHistory() {
   const navigation = useNavigation();
   const { vw, vh, cvw, isTablet } = useResponsive();
   const user = useAuthStore((s) => s.user);
+  const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
@@ -141,7 +143,7 @@ export default function StaffAttendanceHistory() {
       let worked = 0, late = 0, absent = 0, totalMs = 0, countedDays = 0;
 
       data.forEach((r) => {
-        const meta = getStatusMeta(r);
+        const meta = getStatusMeta(t, r);
         marked[r.attendanceDate] = { marked: true, dotColor: meta.dot };
         if (r.isAbsent) { absent++; return; }
         if (r.checkInTime) {
@@ -204,7 +206,7 @@ export default function StaffAttendanceHistory() {
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center", alignItems: "center" }}>
         <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color={C.gold} />
-        <Text style={{ color: C.muted, marginTop: 12, fontSize: cvw * 3.5, letterSpacing: 1.5 }}>LOADING</Text>
+        <Text style={{ color: C.muted, marginTop: 12, fontSize: cvw * 3.5, letterSpacing: 1.5 }}>{t("attendance.loading")}</Text>
       </SafeAreaView>
     );
   }
@@ -221,10 +223,10 @@ export default function StaffAttendanceHistory() {
   };
 
   const tiles = [
-    { label: "Days Worked", value: summaryStats.daysWorked, icon: "checkmark-circle-outline", color: C.green },
-    { label: "Late Days", value: summaryStats.lateDays, icon: "time-outline", color: C.orange },
-    { label: "Absents", value: summaryStats.absents, icon: "close-circle-outline", color: C.red },
-    { label: "Avg Hours", value: summaryStats.avgHours, icon: "timer-outline", color: C.goldLight },
+    { label: t("attendance.daysWorked"), value: summaryStats.daysWorked, icon: "checkmark-circle-outline", color: C.green },
+    { label: t("attendance.lateDays"), value: summaryStats.lateDays, icon: "time-outline", color: C.orange },
+    { label: t("attendance.absents"), value: summaryStats.absents, icon: "close-circle-outline", color: C.red },
+    { label: t("attendance.avgHours"), value: summaryStats.avgHours, icon: "timer-outline", color: C.goldLight },
   ];
 
   return (
@@ -254,10 +256,10 @@ export default function StaffAttendanceHistory() {
             </TouchableOpacity>
             <View>
               <Text style={{ color: C.gold, fontSize: cvw * 2.2, letterSpacing: 3, fontWeight: "700", textTransform: "uppercase" }}>
-                Staff Portal
+                {t("attendance.staffPortal")}
               </Text>
               <Text style={{ color: C.white, fontSize: isTablet ? cvw * 4 : cvw * 5.5, fontWeight: "800", letterSpacing: -0.5 }}>
-                My Attendance
+                {t("attendance.myAttendance")}
               </Text>
             </View>
           </View>
@@ -292,7 +294,7 @@ export default function StaffAttendanceHistory() {
           </View>
 
           {/* ── CALENDAR ── */}
-          <SectionLabel title="Attendance Calendar" icon="calendar-outline" cvw={cvw} isTablet={isTablet} />
+          <SectionLabel title={t("attendance.attendanceCalendar")} icon="calendar-outline" cvw={cvw} isTablet={isTablet} />
           <View style={{
             backgroundColor: C.card, borderRadius: 20,
             borderWidth: 1, borderColor: C.border,
@@ -323,10 +325,10 @@ export default function StaffAttendanceHistory() {
               paddingBottom: cvw * 4, paddingTop: 4,
             }}>
               {[
-                { label: "Present", color: C.gold },
-                { label: "Late", color: "#f97316" },
-                { label: "Completed", color: "#22c55e" },
-                { label: "Absent", color: "#ef4444" },
+                { label: t("attendance.present"), color: C.gold },
+                { label: t("attendance.late"), color: "#f97316" },
+                { label: t("attendance.completed"), color: "#22c55e" },
+                { label: t("attendance.absent"), color: "#ef4444" },
               ].map((l) => (
                 <View key={l.label} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: l.color }} />
@@ -355,13 +357,13 @@ export default function StaffAttendanceHistory() {
                   paddingVertical: vh * 5, marginBottom: vh * 2.5,
                 }}>
                   <Ionicons name="calendar-clear-outline" size={cvw * 10} color={C.faint} />
-                  <Text style={{ color: C.muted, marginTop: 12, fontSize: cvw * 3.5, fontWeight: "600" }}>No attendance record</Text>
+                  <Text style={{ color: C.muted, marginTop: 12, fontSize: cvw * 3.5, fontWeight: "600" }}>{t("attendance.noAttendanceRecordDetail")}</Text>
                   <Text style={{ color: C.faint, marginTop: 4, fontSize: cvw * 3 }}>{selectedDate}</Text>
                   <TouchableOpacity
                     onPress={() => { setSelectedDate(null); setSelectedRecord(null); }}
                     style={{ marginTop: 16, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.border }}
                   >
-                    <Text style={{ color: C.muted, fontSize: cvw * 3 }}>Clear selection</Text>
+                    <Text style={{ color: C.muted, fontSize: cvw * 3 }}>{t("attendance.clearSelection")}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -369,7 +371,7 @@ export default function StaffAttendanceHistory() {
           )}
 
           {/* ── RECORDS LIST ── */}
-          <SectionLabel title="This Month's Records" icon="list-outline" cvw={cvw} isTablet={isTablet} />
+          <SectionLabel title={t("attendance.thisMonthsRecords")} icon="list-outline" cvw={cvw} isTablet={isTablet} />
           {records.length === 0 ? (
             <View style={{
               backgroundColor: C.card, borderRadius: 20,
@@ -377,7 +379,7 @@ export default function StaffAttendanceHistory() {
               alignItems: "center", paddingVertical: vh * 5,
             }}>
               <Ionicons name="document-outline" size={cvw * 10} color={C.faint} />
-              <Text style={{ color: C.muted, marginTop: 12, fontSize: cvw * 3.5 }}>No records this month</Text>
+              <Text style={{ color: C.muted, marginTop: 12, fontSize: cvw * 3.5 }}>{t("attendance.noRecordsThisMonth")}</Text>
             </View>
           ) : (
             [...records]
@@ -455,10 +457,10 @@ export default function StaffAttendanceHistory() {
                       <Ionicons name="trash-outline" size={26} color={C.red} />
                     </View>
                     <Text style={{ color: C.red, fontWeight: "700", fontSize: 15, marginBottom: 6 }}>
-                      Photo Deleted
+                      {t("attendance.photoDeleted")}
                     </Text>
                     <Text style={{ color: C.muted, fontSize: 12.5, textAlign: "center", lineHeight: 18, paddingHorizontal: 16 }}>
-                      Attendance photos are automatically deleted{"\n"}after 15 days to protect your storage.
+                      {t("attendance.photoDeletedDesc")}
                     </Text>
                     <View style={{
                       marginTop: 14,
@@ -469,7 +471,7 @@ export default function StaffAttendanceHistory() {
                     }}>
                       <Ionicons name="time-outline" size={13} color={C.red} />
                       <Text style={{ color: C.red, fontSize: 12, fontWeight: "600" }}>
-                        15-day retention policy
+                        {t("attendance.retentionPolicy")}
                       </Text>
                     </View>
                   </View>
@@ -487,7 +489,7 @@ export default function StaffAttendanceHistory() {
               ) : (
                 <View style={{ alignItems: "center", padding: 40 }}>
                   <Ionicons name="image-outline" size={60} color={C.muted} />
-                  <Text style={{ color: C.muted, marginTop: 10, textAlign: "center", fontSize: 13 }}>Photo unavailable</Text>
+                  <Text style={{ color: C.muted, marginTop: 10, textAlign: "center", fontSize: 13 }}>{t("attendance.photoUnavailable")}</Text>
                 </View>
               );
             })()}
@@ -500,7 +502,8 @@ export default function StaffAttendanceHistory() {
 
 // ─── Day Detail Card ──────────────────────────────────────────────────────────
 function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet }) {
-  const meta = getStatusMeta(record);
+  const { t } = useTranslation();
+  const meta = getStatusMeta(t, record);
   const duration = calcDuration(record.checkInTime, record.checkOutTime);
   const photoExpired = isPhotoExpired(record.attendanceDate);
 
@@ -528,7 +531,7 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
           style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: C.faint, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
         >
           <Ionicons name="close" size={14} color={C.muted} />
-          <Text style={{ color: C.muted, fontSize: cvw * 2.8 }}>Clear</Text>
+          <Text style={{ color: C.muted, fontSize: cvw * 2.8 }}>{t("attendance.clearSelection").split(" ")[0]}</Text>
         </TouchableOpacity>
       </View>
 
@@ -542,7 +545,7 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
               flexDirection: "row", alignItems: "center", gap: 5,
             }}>
               <Ionicons name="alert-circle-outline" size={13} color={C.orange} />
-              <Text style={{ color: C.orange, fontWeight: "700", fontSize: cvw * 2.6 }}>LATE ARRIVAL</Text>
+              <Text style={{ color: C.orange, fontWeight: "700", fontSize: cvw * 2.6 }}>{t("attendance.lateArrival")}</Text>
             </View>
           )}
           {record.isHalfDay && (
@@ -552,7 +555,7 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
               flexDirection: "row", alignItems: "center", gap: 5,
             }}>
               <Ionicons name="partly-sunny-outline" size={13} color={C.blue} />
-              <Text style={{ color: C.blue, fontWeight: "700", fontSize: cvw * 2.6 }}>HALF DAY</Text>
+              <Text style={{ color: C.blue, fontWeight: "700", fontSize: cvw * 2.6 }}>{t("attendance.halfDay")}</Text>
             </View>
           )}
         </View>
@@ -569,7 +572,7 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
         }}>
           <Ionicons name="information-circle-outline" size={15} color={C.red} />
           <Text style={{ color: C.red, fontSize: cvw * 2.8, flex: 1 }}>
-            Attendance photos for this day have been deleted (15-day retention policy)
+            {t("attendance.photoDeletedNotice")}
           </Text>
         </View>
       )}
@@ -577,7 +580,7 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
       {/* Time blocks */}
       <View style={{ flexDirection: isTablet ? "row" : "column", gap: isTablet ? vw * 2 : vh * 1.5, marginBottom: vh * 2 }}>
         <TimeBlock
-          label="Check In"
+          label={t("attendance.checkIn")}
           time={fmtTime(record.checkInTime)}
           icon="log-in-outline"
           color={C.green}
@@ -587,11 +590,11 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
           photoExpired={photoExpired}
           lat={record.checkInLat}
           lng={record.checkInLng}
-          onPhotoPress={() => onPhotoPress(record.checkInPhoto, "Check In Photo", record.attendanceDate)}
+          onPhotoPress={() => onPhotoPress(record.checkInPhoto, t("attendance.checkIn"), record.attendanceDate)}
           cvw={cvw} vh={vh} isTablet={isTablet}
         />
         <TimeBlock
-          label="Check Out"
+          label={t("attendance.checkOut")}
           time={fmtTime(record.checkOutTime)}
           icon="log-out-outline"
           color={C.red}
@@ -601,7 +604,7 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
           photoExpired={photoExpired}
           lat={record.checkOutLat}
           lng={record.checkOutLng}
-          onPhotoPress={() => onPhotoPress(record.checkOutPhoto, "Check Out Photo", record.attendanceDate)}
+          onPhotoPress={() => onPhotoPress(record.checkOutPhoto, t("attendance.checkOut"), record.attendanceDate)}
           cvw={cvw} vh={vh} isTablet={isTablet}
         />
       </View>
@@ -621,7 +624,7 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
           }}>
             <Ionicons name="timer-outline" size={cvw * 3.5} color={C.gold} />
           </View>
-          <Text style={{ color: C.muted, fontSize: cvw * 3, fontWeight: "600" }}>Total Working Hours</Text>
+          <Text style={{ color: C.muted, fontSize: cvw * 3, fontWeight: "600" }}>{t("attendance.totalWorkingHours")}</Text>
         </View>
         <Text style={{ color: C.gold, fontWeight: "800", fontSize: cvw * 4.5 }}>{duration}</Text>
       </View>
@@ -631,6 +634,7 @@ function DayDetailCard({ record, onPhotoPress, onClear, cvw, vh, vw, isTablet })
 
 // ─── Time Block ───────────────────────────────────────────────────────────────
 function TimeBlock({ label, time, icon, color, bg, border, photo, photoExpired, lat, lng, onPhotoPress, cvw, vh, isTablet }) {
+  const { t } = useTranslation();
   return (
     <View style={{ flex: 1, backgroundColor: bg, borderWidth: 1, borderColor: border, borderRadius: 16, padding: isTablet ? cvw * 2 : cvw * 4 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: vh * 1 }}>
@@ -658,7 +662,7 @@ function TimeBlock({ label, time, icon, color, bg, border, photo, photoExpired, 
       ) : (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: vh * 1 }}>
           <Ionicons name="location-outline" size={isTablet ? cvw * 1.8 : cvw * 3} color={C.faint} />
-          <Text style={{ color: C.faint, fontSize: isTablet ? cvw * 1.8 : cvw * 2.8 }}>Location unavailable</Text>
+          <Text style={{ color: C.faint, fontSize: isTablet ? cvw * 1.8 : cvw * 2.8 }}>{t("attendance.locationUnavailable")}</Text>
         </View>
       )}
 
@@ -673,7 +677,7 @@ function TimeBlock({ label, time, icon, color, bg, border, photo, photoExpired, 
             alignSelf: "flex-start",
           }}>
             <Ionicons name="trash-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.red} />
-            <Text style={{ color: C.red, fontWeight: "600", fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>Photo Deleted</Text>
+            <Text style={{ color: C.red, fontWeight: "600", fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>{t("attendance.photoDeleted")}</Text>
           </View>
         ) : (
           <TouchableOpacity
@@ -688,7 +692,7 @@ function TimeBlock({ label, time, icon, color, bg, border, photo, photoExpired, 
             }}
           >
             <Ionicons name="camera-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={color} />
-            <Text style={{ color, fontWeight: "600", fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>View Photo</Text>
+            <Text style={{ color, fontWeight: "600", fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>{t("attendance.viewPhoto")}</Text>
           </TouchableOpacity>
         )
       ) : (
@@ -700,7 +704,7 @@ function TimeBlock({ label, time, icon, color, bg, border, photo, photoExpired, 
           alignSelf: "flex-start", opacity: 0.5,
         }}>
           <Ionicons name="camera-off-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.muted} />
-          <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>No photo</Text>
+          <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>{t("attendance.noPhoto")}</Text>
         </View>
       )}
     </View>
@@ -709,7 +713,8 @@ function TimeBlock({ label, time, icon, color, bg, border, photo, photoExpired, 
 
 // ─── Record Row ───────────────────────────────────────────────────────────────
 function RecordRow({ record, isSelected, onPress, onPhotoPress, cvw, vh, isTablet }) {
-  const meta = getStatusMeta(record);
+  const { t } = useTranslation();
+  const meta = getStatusMeta(t, record);
   const duration = calcDuration(record.checkInTime, record.checkOutTime);
   const photoExpired = isPhotoExpired(record.attendanceDate);
 
@@ -758,7 +763,7 @@ function RecordRow({ record, isSelected, onPress, onPhotoPress, cvw, vh, isTable
               backgroundColor: C.blueBg, borderWidth: 1, borderColor: C.blueBorder,
               borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2,
             }}>
-              <Text style={{ color: C.blue, fontWeight: "700", fontSize: isTablet ? cvw * 1.6 : cvw * 2.6 }}>HALF</Text>
+              <Text style={{ color: C.blue, fontWeight: "700", fontSize: isTablet ? cvw * 1.6 : cvw * 2.6 }}>{t("attendance.half")}</Text>
             </View>
           )}
           {/* ✅ Show a small "Photo deleted" pill on rows older than 15 days */}
@@ -769,7 +774,7 @@ function RecordRow({ record, isSelected, onPress, onPhotoPress, cvw, vh, isTable
               flexDirection: "row", alignItems: "center", gap: 3,
             }}>
               <Ionicons name="trash-outline" size={10} color={C.red} />
-              <Text style={{ color: C.red, fontWeight: "600", fontSize: isTablet ? cvw * 1.4 : cvw * 2.4 }}>Photos deleted</Text>
+              <Text style={{ color: C.red, fontWeight: "600", fontSize: isTablet ? cvw * 1.4 : cvw * 2.4 }}>{t("attendance.photosDeleted")}</Text>
             </View>
           )}
         </View>

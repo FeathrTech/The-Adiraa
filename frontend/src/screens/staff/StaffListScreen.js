@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import { fetchUsers } from "../../api/userApi";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -54,10 +55,11 @@ function useResponsive() {
 
 // ─── Filter Tabs ──────────────────────────────────────────────────────────────
 function FilterTabs({ filter, setFilter, users, cvw, isTablet }) {
+  const { t } = useTranslation();
   const tabs = [
-    { key: "all", label: "All", count: users.length },
-    { key: "active", label: "Active", count: users.filter((u) => u.isActive).length },
-    { key: "inactive", label: "Inactive", count: users.filter((u) => !u.isActive).length },
+    { key: "all", label: t("staff.all", "All"), count: users.length },
+    { key: "active", label: t("staff.active", "Active"), count: users.filter((u) => u.isActive).length },
+    { key: "inactive", label: t("staff.inactive", "Inactive"), count: users.filter((u) => !u.isActive).length },
   ];
 
   return (
@@ -116,7 +118,8 @@ function FilterTabs({ filter, setFilter, users, cvw, isTablet }) {
 
 // ─── Staff card — defined OUTSIDE ────────────────────────────────────────────
 function StaffCard({ item, onPress, cvw, isTablet }) {
-  const roleLabel = item.roles?.map((r) => r.name).join(", ") || "No Role";
+  const { t } = useTranslation();
+  const roleLabel = item.roles?.map((r) => r.name).join(", ") || t("staff.noRole", "No Role");
   const isActive = item.isActive;
 
   return (
@@ -184,7 +187,7 @@ function StaffCard({ item, onPress, cvw, isTablet }) {
             fontSize: isTablet ? cvw * 1.8 : cvw * 2.8,
             letterSpacing: 0.5,
           }}>
-            {isActive ? "ACTIVE" : "INACTIVE"}
+            {isActive ? t("staff.activeCaps", "ACTIVE") : t("staff.inactiveCaps", "INACTIVE")}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={isTablet ? cvw * 2 : cvw * 3.8} color={C.muted} />
@@ -195,17 +198,18 @@ function StaffCard({ item, onPress, cvw, isTablet }) {
 
 // ─── Empty state — defined OUTSIDE ───────────────────────────────────────────
 function EmptyState({ search, filter, cvw, isTablet }) {
+  const { t } = useTranslation();
   const isFiltered = filter !== "all";
   const label = search.trim()
-    ? "No Results Found"
+    ? t("staff.noResultsFound", "No Results Found")
     : isFiltered
-      ? `No ${filter === "active" ? "Active" : "Inactive"} Staff`
-      : "No Staff Found";
+      ? filter === "active" ? t("staff.noActiveStaff", "No Active Staff") : t("staff.noInactiveStaff", "No Inactive Staff")
+      : t("staff.noStaffFound", "No Staff Found");
   const sub = search.trim()
-    ? `No staff matching "${search}"`
+    ? t("staff.noStaffMatching", 'No staff matching "{{search}}"', { search })
     : isFiltered
-      ? `No staff members are currently ${filter}`
-      : "Add staff members to get started";
+      ? filter === "active" ? t("staff.noActiveStaffSub", "No staff members are currently active") : t("staff.noInactiveStaffSub", "No staff members are currently inactive")
+      : t("staff.addStaffToGetStarted", "Add staff members to get started");
 
   return (
     <View style={{ alignItems: "center", paddingTop: 64 }}>
@@ -234,6 +238,7 @@ function EmptyState({ search, filter, cvw, isTablet }) {
 
 // ─── Screen header — defined OUTSIDE ─────────────────────────────────────────
 function ScreenHeader({ navigation, canCreate, cvw, vh, isTablet }) {
+  const { t } = useTranslation();
   return (
     <View style={{
       flexDirection: "row",
@@ -255,7 +260,7 @@ function ScreenHeader({ navigation, canCreate, cvw, vh, isTablet }) {
       >
         <Ionicons name="arrow-back" size={isTablet ? cvw * 2.2 : 18} color={C.gold} />
         {isTablet && (
-          <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>Back</Text>
+          <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>{t("settings.cancel", "Back")}</Text>
         )}
       </TouchableOpacity>
       <View style={{ flex: 1 }}>
@@ -263,13 +268,13 @@ function ScreenHeader({ navigation, canCreate, cvw, vh, isTablet }) {
           color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8,
           letterSpacing: 3, fontWeight: "700", textTransform: "uppercase", marginBottom: 2,
         }}>
-          Admin
+          {t("staff.admin", "Admin")}
         </Text>
         <Text style={{
           color: C.white, fontSize: isTablet ? cvw * 3.5 : cvw * 5.5,
           fontWeight: "800", letterSpacing: -0.3,
         }}>
-          Staff
+          {t("staff.staffSettings", "Staff")}
         </Text>
       </View>
       {canCreate && (
@@ -286,7 +291,7 @@ function ScreenHeader({ navigation, canCreate, cvw, vh, isTablet }) {
         >
           <Ionicons name="add" size={isTablet ? cvw * 2.2 : cvw * 4.5} color="#000" />
           <Text style={{ color: "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.2 : cvw * 3.5 }}>
-            Add Staff
+            {t("staff.addStaff", "Add Staff")}
           </Text>
         </TouchableOpacity>
       )}
@@ -296,6 +301,7 @@ function ScreenHeader({ navigation, canCreate, cvw, vh, isTablet }) {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function StaffListScreen() {
+  const { t } = useTranslation();
   const [users, setUsers] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -363,7 +369,7 @@ export default function StaffListScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center", alignItems: "center" }}>
         <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color={C.gold} />
-        <Text style={{ color: C.muted, marginTop: 12, letterSpacing: 1.5, fontSize: 13 }}>LOADING</Text>
+        <Text style={{ color: C.muted, marginTop: 12, letterSpacing: 1.5, fontSize: 13 }}>{t("roles.loading", "LOADING")}</Text>
       </SafeAreaView>
     );
   }
@@ -413,7 +419,7 @@ export default function StaffListScreen() {
               color={searchFocused ? C.gold : C.muted}
             />
             <TextInput
-              placeholder="Search by name or mobile..."
+              placeholder={t("staff.searchPlaceholder", "Search by name or mobile...")}
               placeholderTextColor={C.muted}
               value={search}
               onChangeText={setSearch}
@@ -446,18 +452,18 @@ export default function StaffListScreen() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Ionicons name="people-outline" size={isTablet ? cvw * 2 : cvw * 3.5} color={C.muted} />
               <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
-                {filtered.length} {filtered.length === 1 ? "member" : "members"}
+                {filtered.length} {filtered.length === 1 ? t("staff.member", "member") : t("staff.members", "members")}
                 {search.trim()
-                  ? ` found for "${search}"`
+                  ? t("staff.foundFor", ' found for "{{search}}"', { search })
                   : filter !== "all"
-                    ? ` ${filter}`
-                    : " total"}
+                    ? ` ${filter === "active" ? t("staff.active", "Active").toLowerCase() : t("staff.inactive", "Inactive").toLowerCase()}`
+                    : t("staff.total", " total")}
               </Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.green }} />
               <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 2.8 }}>
-                {users.filter((u) => u.isActive).length} active
+                {users.filter((u) => u.isActive).length} {t("staff.active", "Active").toLowerCase()}
               </Text>
             </View>
           </View>

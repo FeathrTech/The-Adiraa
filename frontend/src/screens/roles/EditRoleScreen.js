@@ -18,6 +18,7 @@ import { updateRole, fetchRoleById } from "../../api/roleApi";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useUIStore } from "../../store/uiStore";
 import { PERMISSION_GROUPS } from "../../config/permissionMap";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -54,6 +55,7 @@ const switchProps = (value) => ({
 
 // ─── Screen Header ────────────────────────────────────────────────────────────
 function ScreenHeader({ navigation, roleName, selectedCount, totalCount, isTablet, vw, vh, cvw }) {
+    const { t } = useTranslation();
     return (
         <View style={{
             flexDirection: "row", alignItems: "center",
@@ -86,7 +88,7 @@ function ScreenHeader({ navigation, roleName, selectedCount, totalCount, isTable
                     color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8,
                     letterSpacing: 3, fontWeight: "700", textTransform: "uppercase", marginBottom: 2,
                 }}>
-                    Role Management
+                    {t("roles.roleManagement")}
                 </Text>
                 <Text
                     style={{
@@ -96,7 +98,7 @@ function ScreenHeader({ navigation, roleName, selectedCount, totalCount, isTable
                     numberOfLines={1}
                     ellipsizeMode="tail"
                 >
-                    {roleName || "Edit Role"}
+                    {roleName || t("roles.editRole")}
                 </Text>
             </View>
 
@@ -122,7 +124,7 @@ function ScreenHeader({ navigation, roleName, selectedCount, totalCount, isTable
                     fontSize: isTablet ? cvw * 1.6 : cvw * 2.4,
                     letterSpacing: 1,
                 }}>
-                    PERMS
+                    {t("roles.perms")}
                 </Text>
             </View>
         </View>
@@ -139,13 +141,24 @@ function FormContent({
     toggleGroup,
     togglePermission,
     handleSave,
+    initialRoleName,
+    initialPermissions,
     isTablet,
     vw,
     vh,
     cvw,
 }) {
+    const { t } = useTranslation();
     const allSelected = selectedPermissions.length === permissions.length;
-    const canSave = selectedPermissions.length > 0;
+    const nameChanged = roleNameInput.trim() !== initialRoleName.trim();
+
+    const permissionsChanged =
+        selectedPermissions.length !== initialPermissions.length ||
+        !selectedPermissions.every((id) => initialPermissions.includes(id));
+
+    const canSave =
+        roleNameInput.trim() && 
+        (nameChanged || permissionsChanged);
     const selectedCount = selectedPermissions.length;
     const totalCount = permissions.length;
 
@@ -193,7 +206,7 @@ function FormContent({
                         fontWeight: "700",
                         fontSize: isTablet ? cvw * 2.4 : cvw * 3.8,
                     }}>
-                        Role Name
+                        {t("roles.roleName")}
                     </Text>
                     <Text style={{
                         color: C.red,
@@ -207,7 +220,7 @@ function FormContent({
                 <TextInput
                     value={roleNameInput}
                     onChangeText={setRoleNameInput}
-                    placeholder="e.g. Manager, Supervisor…"
+                    placeholder={t("roles.editRoleNamePlaceholder")}
                     placeholderTextColor={C.muted}
                     style={{
                         backgroundColor: C.inputBg,
@@ -256,10 +269,10 @@ function FormContent({
                             color: C.white, fontWeight: "700",
                             fontSize: isTablet ? cvw * 2.6 : cvw * 3.5,
                         }}>
-                            Select All Permissions
+                            {t("roles.selectAllPermissions")}
                         </Text>
                         <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3, marginTop: 2 }}>
-                            {selectedCount} of {totalCount} selected
+                            {t("roles.countSelected", { selectedCount, totalCount })}
                         </Text>
                     </View>
                 </View>
@@ -332,7 +345,7 @@ function FormContent({
                                         {groupName}
                                     </Text>
                                     <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3, marginTop: 2 }}>
-                                        {groupIds.filter(id => selectedPermissions.includes(id)).length} / {groupIds.length} selected
+                                        {t("roles.countSelected", { selectedCount: groupIds.filter(id => selectedPermissions.includes(id)).length, totalCount: groupIds.length })}
                                     </Text>
                                 </View>
                             </View>
@@ -428,7 +441,7 @@ function FormContent({
                     fontSize: isTablet ? cvw * 2.6 : cvw * 4,
                     letterSpacing: 0.3, textTransform: "uppercase",
                 }}>
-                    Save Changes
+                    {t("events.saveChangesBtn")}
                 </Text>
             </TouchableOpacity>
         </ScrollView>
@@ -437,6 +450,7 @@ function FormContent({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function EditRoleScreen() {
+    const { t } = useTranslation();
     const route = useRoute();
     const navigation = useNavigation();
     const { roleId } = route.params;
@@ -448,6 +462,8 @@ export default function EditRoleScreen() {
     const [permissions, setPermissions] = useState([]);
     const [selectedPermissions, setSelectedPermissions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [initialRoleName, setInitialRoleName] = useState("");
+    const [initialPermissions, setInitialPermissions] = useState([]);
 
     useEffect(() => { load(); }, []);
 
@@ -458,11 +474,16 @@ export default function EditRoleScreen() {
                 fetchRoleById(roleId),
             ]);
             setPermissions(allPermissions);
+            const perms = (roleDetails.permissions || []).map((p) => p.id);
+
             setRoleNameInput(roleDetails.name);
-            setSelectedPermissions((roleDetails.permissions || []).map((p) => p.id));
+            setSelectedPermissions(perms);
+
+            setInitialRoleName(roleDetails.name);
+            setInitialPermissions(perms);
         } catch (error) {
             console.log("PERMISSION LOAD ERROR:", error.response?.data || error.message);
-            Alert.alert("Error", "Failed to load permissions");
+            Alert.alert(t("roles.error"), t("roles.failedToLoadPermissions"));
         } finally {
             setLoading(false);
         }
@@ -491,11 +512,11 @@ export default function EditRoleScreen() {
 
     const handleSave = async () => {
         if (!roleNameInput.trim()) {
-            Alert.alert("Error", "Role name is required");
+            Alert.alert(t("roles.error"), t("roles.roleNameRequired"));
             return;
         }
         if (!selectedPermissions.length) {
-            Alert.alert("Warning", "Role must have at least one permission");
+            Alert.alert(t("roles.validation"), t("roles.roleMinPermission"));
             return;
         }
         try {
@@ -504,10 +525,10 @@ export default function EditRoleScreen() {
                 name: roleNameInput.trim(),
                 permissionIds: selectedPermissions,
             });
-            Alert.alert("Success", "Role updated");
+            Alert.alert(t("roles.success"), t("roles.roleUpdated"));
             navigation.goBack();
         } catch (error) {
-            Alert.alert("Error", error.response?.data?.message || "Update failed");
+            Alert.alert(t("roles.error"), error.response?.data?.message || t("roles.updateFailed"));
         } finally {
             setGlobalLoading(false);
         }
@@ -538,6 +559,8 @@ export default function EditRoleScreen() {
             />
             <FormContent
                 permissions={permissions}
+                initialRoleName={initialRoleName}
+                initialPermissions={initialPermissions}
                 selectedPermissions={selectedPermissions}
                 roleNameInput={roleNameInput}
                 setRoleNameInput={setRoleNameInput}

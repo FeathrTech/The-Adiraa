@@ -19,6 +19,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useRealtime } from "../../hooks/useRealtime";
 import { useAuthStore } from "../../store/authStore";
 import { can, ACTION_PERMISSIONS } from "../../config/permissionMap";
+import { useTranslation } from "react-i18next";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -47,6 +48,7 @@ function useResponsive() {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function RoleListScreen() {
+  const { t } = useTranslation();
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,7 +64,7 @@ export default function RoleListScreen() {
       const data = await fetchRoles();
       setRoles(data);
     } catch (error) {
-      Alert.alert("Error", error.response?.data?.message || "Failed to load roles");
+      Alert.alert(t("roles.error"), error.response?.data?.message || t("roles.failedToLoadRoles"));
     } finally {
       setLoading(false);
     }
@@ -81,19 +83,19 @@ export default function RoleListScreen() {
 
   const handleDelete = (roleId, roleName) => {
     if (roleName === "Owner") {
-      Alert.alert("Protected Role", "The Owner role cannot be deleted.");
+      Alert.alert(t("roles.protectedRole"), t("roles.ownerCannotBeDeleted"));
       return;
     }
-    Alert.alert("Delete Role", "Are you sure you want to delete this role?", [
-      { text: "Cancel" },
+    Alert.alert(t("roles.deleteRoleTitle"), t("roles.deleteRoleConfirm"), [
+      { text: t("roles.cancel") },
       {
-        text: "Delete", style: "destructive",
+        text: t("roles.delete"), style: "destructive",
         onPress: async () => {
           try {
             await deleteRole(roleId);
             loadRoles();
           } catch {
-            Alert.alert("Error", "Delete failed");
+            Alert.alert(t("roles.error"), t("roles.deleteFailed"));
           }
         },
       },
@@ -157,7 +159,7 @@ export default function RoleListScreen() {
                 }}>
                   <Ionicons name="lock-closed-outline" size={isTablet ? cvw * 1.5 : cvw * 2.5} color={C.gold} />
                   <Text style={{ color: C.gold, fontWeight: "600", fontSize: isTablet ? cvw * 1.6 : cvw * 2.5 }}>
-                    Protected
+                    {t("roles.protected")}
                   </Text>
                 </View>
               )}
@@ -166,7 +168,7 @@ export default function RoleListScreen() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
               <Ionicons name="key-outline" size={isTablet ? cvw * 1.8 : cvw * 3} color={C.muted} />
               <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
-                {item.permissions?.length || 0} permission{item.permissions?.length !== 1 ? "s" : ""}
+                {t("roles.permissionCount", { count: item.permissions?.length || 0 })}
               </Text>
             </View>
           </View>
@@ -194,7 +196,7 @@ export default function RoleListScreen() {
               >
                 <Ionicons name="key-outline" size={isTablet ? cvw * 2 : cvw * 3.8} color={C.gold} />
                 <Text style={{ color: C.gold, fontWeight: "600", fontSize: isTablet ? cvw * 2.2 : cvw * 3.5 }}>
-                  Manage Permissions
+                  {t("roles.managePermissions")}
                 </Text>
               </TouchableOpacity>
             )}
@@ -215,7 +217,7 @@ export default function RoleListScreen() {
               >
                 <Ionicons name="trash-outline" size={isTablet ? cvw * 2 : cvw * 3.8} color="#E57373" />
                 <Text style={{ color: "#E57373", fontWeight: "600", fontSize: isTablet ? cvw * 2.2 : cvw * 3.5 }}>
-                  Delete
+                  {t("roles.delete")}
                 </Text>
               </TouchableOpacity>
             )}
@@ -240,10 +242,10 @@ export default function RoleListScreen() {
         <Ionicons name="shield-outline" size={isTablet ? cvw * 7 : cvw * 10} color={C.muted} />
       </View>
       <Text style={{ color: C.white, fontWeight: "700", fontSize: isTablet ? cvw * 3 : cvw * 4.5, marginBottom: 6 }}>
-        No Roles Found
+        {t("roles.noRolesFound")}
       </Text>
       <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 2.2 : cvw * 3.5, textAlign: "center" }}>
-        Create a role to start assigning permissions to staff
+        {t("roles.createRoleHint")}
       </Text>
     </View>
   );
@@ -305,10 +307,10 @@ export default function RoleListScreen() {
                   color: C.gold, fontSize: cvw * 2.8, letterSpacing: 3,
                   fontWeight: "700", textTransform: "uppercase", marginBottom: 2,
                 }}>
-                  Admin
+                  {t("roles.admin")}
                 </Text>
                 <Text style={{ color: C.white, fontSize: cvw * 5.5, fontWeight: "800", letterSpacing: -0.3 }}>
-                  Roles
+                  {t("roles.rolesTitle")}
                 </Text>
               </View>
             </View>
@@ -335,7 +337,7 @@ export default function RoleListScreen() {
             >
               <Ionicons name="add-circle-outline" size={cvw * 5} color="#000" />
               <Text style={{ color: "#000", fontWeight: "800", fontSize: cvw * 4, letterSpacing: 0.5, textTransform: "uppercase" }}>
-                Create Role
+                {t("roles.createRole")}
               </Text>
             </TouchableOpacity>
           )}
@@ -381,10 +383,10 @@ export default function RoleListScreen() {
                   color: C.gold, fontSize: cvw * 2, letterSpacing: 3,
                   fontWeight: "700", textTransform: "uppercase", marginBottom: 2,
                 }}>
-                  Admin
+                  {t("roles.admin")}
                 </Text>
                 <Text style={{ color: C.white, fontSize: cvw * 3.5, fontWeight: "800", letterSpacing: -0.3 }}>
-                  Roles
+                  {t("roles.rolesTitle")}
                 </Text>
               </View>
             </View>
@@ -403,7 +405,7 @@ export default function RoleListScreen() {
               >
                 <Ionicons name="add-circle-outline" size={cvw * 2.4} color="#000" />
                 <Text style={{ color: "#000", fontWeight: "800", fontSize: cvw * 2.4, letterSpacing: 0.3 }}>
-                  Create Role
+                  {t("roles.createRole")}
                 </Text>
               </TouchableOpacity>
             )}

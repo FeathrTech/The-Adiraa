@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
+import { useTranslation } from "react-i18next";
 
 import { fetchRoles } from "../../api/roleApi";
 import { fetchSites } from "../../api/siteApi";
@@ -59,13 +60,14 @@ function useResponsive() {
 
 // ─── Field label ──────────────────────────────────────────────────────────────
 function FieldLabel({ icon, label, hint, optional, required, cvw, isTablet }) {
+  const { t } = useTranslation();
   return (
     <View style={{ marginBottom: 6 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <Ionicons name={icon} size={isTablet ? cvw * 2 : cvw * 4} color={C.gold} />
         <Text style={{ color: C.white, fontWeight: "700", fontSize: isTablet ? cvw * 2.2 : cvw * 3.8 }}>{label}</Text>
         {required && <Text style={{ color: C.red, fontSize: isTablet ? cvw * 2 : cvw * 3.8, fontWeight: "800", marginLeft: -2 }}>*</Text>}
-        {optional && <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>(optional)</Text>}
+        {optional && <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>({t("settings.optional", "optional")})</Text>}
       </View>
       {hint && (
         <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.7 : cvw * 2.8, marginTop: 2, marginLeft: isTablet ? cvw * 2.5 : cvw * 5.5 }}>
@@ -81,6 +83,7 @@ function StyledInput({
   value, onChangeText, placeholder, keyboardType, secureTextEntry,
   editable = true, isPhone, maxLength, showCount, cvw, isTablet,
 }) {
+  const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
   const currentLength = value ? value.length : 0;
   const isNearLimit = maxLength && currentLength >= Math.floor(maxLength * 0.85);
@@ -133,7 +136,7 @@ function StyledInput({
         </View>
         {phoneCount > 0 && phoneCount < 10 && (
           <Text style={{ color: C.red, fontSize: isTablet ? cvw * 1.6 : cvw * 2.8, marginTop: 4, marginLeft: 2 }}>
-            Phone number must be 10 digits
+            {t("staff.validation.mobileLen", "Phone number must be 10 digits")}
           </Text>
         )}
       </View>
@@ -177,9 +180,10 @@ function StyledInput({
 
 // ─── Username row ─────────────────────────────────────────────────────────────
 function UsernameRow({ username, cvw, isTablet }) {
+  const { t } = useTranslation();
   return (
     <View style={{ marginBottom: isTablet ? cvw * 1.8 : cvw * 4 }}>
-      <FieldLabel icon="at-outline" label="Username" hint="Login ID — cannot be changed" cvw={cvw} isTablet={isTablet} />
+      <FieldLabel icon="at-outline" label={t("staff.username", "Username")} hint={t("staff.usernameHint", "Login ID — cannot be changed")} cvw={cvw} isTablet={isTablet} />
       <View style={{
         backgroundColor: C.faint, borderWidth: 1, borderColor: C.border,
         borderRadius: 12,
@@ -365,6 +369,7 @@ function ToggleRow({ icon, label, description, value, onToggle, cvw, isTablet })
 
 // ─── Screen header ────────────────────────────────────────────────────────────
 function ScreenHeader({ navigation, cvw, vw, vh, isTablet }) {
+  const { t } = useTranslation();
   return (
     <View style={{
       flexDirection: "row", alignItems: "center",
@@ -384,19 +389,19 @@ function ScreenHeader({ navigation, cvw, vw, vh, isTablet }) {
         }}
       >
         <Ionicons name="arrow-back" size={isTablet ? cvw * 2.2 : 18} color={C.gold} />
-        {isTablet && <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>Back</Text>}
+        {isTablet && <Text style={{ color: C.gold, fontWeight: "600", fontSize: cvw * 2.2 }}>{t("settings.cancel", "Back")}</Text>}
       </TouchableOpacity>
       <View style={{ flex: 1 }}>
         <Text style={{ color: C.gold, fontSize: isTablet ? cvw * 2 : cvw * 2.8, letterSpacing: 3, fontWeight: "700", textTransform: "uppercase", marginBottom: 2 }}>
-          Staff Management
+          {t("staff.staffManagement", "Staff Management")}
         </Text>
         <Text style={{ color: C.white, fontSize: isTablet ? cvw * 3.5 : cvw * 5.5, fontWeight: "800", letterSpacing: -0.3 }}>
-          Edit Staff
+          {t("staff.editStaff", "Edit Staff")}
         </Text>
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
         <Text style={{ color: C.red, fontWeight: "800", fontSize: isTablet ? cvw * 2 : cvw * 3.5 }}>*</Text>
-        <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>Required</Text>
+        <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3 }}>{t("roles.required", "Required")}</Text>
       </View>
     </View>
   );
@@ -414,6 +419,7 @@ const formatShiftTime = (text) => {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function EditStaffScreen() {
+  const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
   const userPermissions = useAuthStore((s) => s.permissions);
@@ -476,7 +482,7 @@ export default function EditStaffScreen() {
       setRoles(Array.isArray(roleData) ? roleData : []);
       setSites(Array.isArray(siteData) ? siteData : []);
     } catch {
-      Alert.alert("Error", "Failed to load roles/locations");
+      Alert.alert(t("roles.error", "Error"), t("staff.failedToLoadRolesSites", "Failed to load roles/locations"));
     } finally {
       setInitialLoading(false);
     }
@@ -536,20 +542,20 @@ export default function EditStaffScreen() {
   };
 
   const validate = () => {
-    if (!name.trim()) return "Full name is required";
-    if (name.trim().length < LIMITS.name.min) return `Name must be at least ${LIMITS.name.min} characters`;
-    if (mobile && mobile.length !== 10) return "Mobile number must be exactly 10 digits";
-    if (email && !isValidEmail(email)) return "Enter a valid email address";
-    if (password && password.length < LIMITS.password.min) return `New password must be at least ${LIMITS.password.min} characters`;
-    if (shiftStart && !isValidTime(shiftStart)) return "Shift start must be in HH:MM format (e.g. 09:00)";
-    if (shiftEnd && !isValidTime(shiftEnd)) return "Shift end must be in HH:MM format (e.g. 18:00)";
-    if (roles.length > 0 && !selectedRole) return "Please select a role";
+    if (!name.trim()) return t("staff.validation.nameReq", "Full name is required");
+    if (name.trim().length < LIMITS.name.min) return t("staff.validation.nameMin", { min: LIMITS.name.min });
+    if (mobile && mobile.length !== 10) return t("staff.validation.mobileLen", "Mobile number must be exactly 10 digits");
+    if (email && !isValidEmail(email)) return t("staff.validation.email", "Enter a valid email address");
+    if (password && password.length < LIMITS.password.min) return t("staff.validation.newPasswordMin", { min: LIMITS.password.min });
+    if (shiftStart && !isValidTime(shiftStart)) return t("staff.validation.timeFormatStart", "Shift start must be in HH:MM format (e.g. 09:00)");
+    if (shiftEnd && !isValidTime(shiftEnd)) return t("staff.validation.timeFormatEnd", "Shift end must be in HH:MM format (e.g. 18:00)");
+    if (roles.length > 0 && !selectedRole) return t("staff.validation.selectRole", "Please select a role");
     return null;
   };
 
   const handleUpdate = async () => {
     const err = validate();
-    if (err) { Alert.alert("Validation Error", err); return; }
+    if (err) { Alert.alert(t("roles.validationError", "Validation Error"), err); return; }
     try {
       setSaving(true);
       const formData = new FormData();
@@ -571,9 +577,9 @@ export default function EditStaffScreen() {
 
       const updatedUser = await updateUser(user.id, formData);
 
-      Alert.alert("Success", "Staff updated", [
+      Alert.alert(t("settings.success", "Success"), t("staff.staffUpdated", "Staff updated"), [
         {
-          text: "OK",
+          text: t("roles.ok", "OK"),
           onPress: () => {
             navigation.dispatch((state) => {
               const routes = state.routes.filter(r => r.name !== "EditStaff").map(r => {
@@ -591,7 +597,7 @@ export default function EditStaffScreen() {
         },
       ]);
     } catch (error) {
-      Alert.alert("Error", error.response?.data?.message || "Failed to update staff");
+      Alert.alert(t("roles.error", "Error"), error.response?.data?.message || t("staff.failedToUpdate", "Failed to update staff"));
     } finally {
       setSaving(false);
     }
@@ -601,7 +607,7 @@ export default function EditStaffScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center", alignItems: "center" }}>
         <Ionicons name="person-outline" size={48} color={C.muted} />
-        <Text style={{ color: C.muted, marginTop: 12, fontSize: 15 }}>No user found</Text>
+        <Text style={{ color: C.muted, marginTop: 12, fontSize: 15 }}>{t("staff.noUserFound", "No user found")}</Text>
       </SafeAreaView>
     );
   }
@@ -611,7 +617,7 @@ export default function EditStaffScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, justifyContent: "center", alignItems: "center" }}>
         <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color={C.gold} />
-        <Text style={{ color: C.muted, marginTop: 12, letterSpacing: 1.5, fontSize: 13 }}>LOADING</Text>
+        <Text style={{ color: C.muted, marginTop: 12, letterSpacing: 1.5, fontSize: 13 }}>{t("roles.loading", "LOADING")}</Text>
       </SafeAreaView>
     );
   }
@@ -630,64 +636,64 @@ export default function EditStaffScreen() {
             contentContainerStyle={{ paddingHorizontal: isTablet ? vw * 3 : vw * 5, paddingTop: vh * 2, paddingBottom: 80 }}
           >
             {/* ── PERSONAL INFO ── */}
-            <SectionHeader title="Personal Info" icon="person-outline" cvw={cvw} isTablet={isTablet} />
+            <SectionHeader title={t("staff.personalInfo", "Personal Info")} icon="person-outline" cvw={cvw} isTablet={isTablet} />
 
-            <FieldLabel icon="text-outline" label="Full Name" hint={`2–${LIMITS.name.max} characters`} required cvw={cvw} isTablet={isTablet} />
-            <StyledInput value={name} onChangeText={setName} placeholder="e.g. Rahul Sharma" maxLength={LIMITS.name.max} showCount cvw={cvw} isTablet={isTablet} />
+            <FieldLabel icon="text-outline" label={t("staff.fullName", "Full Name")} hint={t("staff.nameHint", "2–{{max}} characters", { max: LIMITS.name.max })} required cvw={cvw} isTablet={isTablet} />
+            <StyledInput value={name} onChangeText={setName} placeholder={t("staff.namePlaceholder", "e.g. Rahul Sharma")} maxLength={LIMITS.name.max} showCount cvw={cvw} isTablet={isTablet} />
 
             {isTablet ? (
               <View style={{ flexDirection: "row", gap: cvw * 3 }}>
                 <View style={{ flex: 1 }}>
-                  <FieldLabel icon="call-outline" label="Mobile Number" hint="10-digit number" optional cvw={cvw} isTablet={isTablet} />
-                  <StyledInput value={mobile} onChangeText={setMobile} placeholder="e.g. 9876543210" isPhone cvw={cvw} isTablet={isTablet} />
+                  <FieldLabel icon="call-outline" label={t("staff.mobileNumber", "Mobile Number")} hint={t("staff.tenDigitNumber", "10-digit number")} optional cvw={cvw} isTablet={isTablet} />
+                  <StyledInput value={mobile} onChangeText={setMobile} placeholder={t("staff.mobilePlaceholder", "e.g. 9876543210")} isPhone cvw={cvw} isTablet={isTablet} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <FieldLabel icon="mail-outline" label="Email" hint="Notifications and recovery" optional cvw={cvw} isTablet={isTablet} />
-                  <StyledInput value={email} onChangeText={setEmail} placeholder="e.g. rahul@company.com" keyboardType="email-address" maxLength={LIMITS.email.max} showCount cvw={cvw} isTablet={isTablet} />
+                  <FieldLabel icon="mail-outline" label={t("staff.email", "Email")} hint={t("staff.emailHint", "Notifications and recovery")} optional cvw={cvw} isTablet={isTablet} />
+                  <StyledInput value={email} onChangeText={setEmail} placeholder={t("staff.emailPlaceholder", "e.g. rahul@company.com")} keyboardType="email-address" maxLength={LIMITS.email.max} showCount cvw={cvw} isTablet={isTablet} />
                 </View>
               </View>
             ) : (
               <>
-                <FieldLabel icon="call-outline" label="Mobile Number" hint="10-digit number" optional cvw={cvw} isTablet={isTablet} />
-                <StyledInput value={mobile} onChangeText={setMobile} placeholder="e.g. 9876543210" isPhone cvw={cvw} isTablet={isTablet} />
-                <FieldLabel icon="mail-outline" label="Email" hint="Notifications and recovery" optional cvw={cvw} isTablet={isTablet} />
-                <StyledInput value={email} onChangeText={setEmail} placeholder="e.g. rahul@company.com" keyboardType="email-address" maxLength={LIMITS.email.max} showCount cvw={cvw} isTablet={isTablet} />
+                <FieldLabel icon="call-outline" label={t("staff.mobileNumber", "Mobile Number")} hint={t("staff.tenDigitNumber", "10-digit number")} optional cvw={cvw} isTablet={isTablet} />
+                <StyledInput value={mobile} onChangeText={setMobile} placeholder={t("staff.mobilePlaceholder", "e.g. 9876543210")} isPhone cvw={cvw} isTablet={isTablet} />
+                <FieldLabel icon="mail-outline" label={t("staff.email", "Email")} hint={t("staff.emailHint", "Notifications and recovery")} optional cvw={cvw} isTablet={isTablet} />
+                <StyledInput value={email} onChangeText={setEmail} placeholder={t("staff.emailPlaceholder", "e.g. rahul@company.com")} keyboardType="email-address" maxLength={LIMITS.email.max} showCount cvw={cvw} isTablet={isTablet} />
               </>
             )}
 
             <UsernameRow username={user.username} cvw={cvw} isTablet={isTablet} />
 
             <FieldLabel
-              icon="lock-closed-outline" label="New Password"
-              hint={`Leave blank to keep current${password ? ` · min ${LIMITS.password.min} characters` : ""}`}
+              icon="lock-closed-outline" label={t("staff.newPassword", "New Password")}
+              hint={t("staff.newPasswordHint", "Leave blank to keep current") + (password ? " · " + t("staff.minPassword", { min: LIMITS.password.min }) : "")}
               optional cvw={cvw} isTablet={isTablet}
             />
-            <StyledInput value={password} onChangeText={setPassword} placeholder="Enter new password to change" secureTextEntry maxLength={LIMITS.password.max} showCount cvw={cvw} isTablet={isTablet} />
+            <StyledInput value={password} onChangeText={setPassword} placeholder={t("staff.enterNewPassword", "Enter new password to change")} secureTextEntry maxLength={LIMITS.password.max} showCount cvw={cvw} isTablet={isTablet} />
             {password.length > 0 && password.length < LIMITS.password.min && (
               <Text style={{ color: C.red, fontSize: isTablet ? cvw * 1.6 : cvw * 2.8, marginTop: -(isTablet ? cvw * 1.4 : cvw * 3), marginBottom: isTablet ? cvw * 1 : cvw * 2, marginLeft: 2 }}>
-                Password must be at least {LIMITS.password.min} characters
+                {t("staff.validation.newPasswordMin", { min: LIMITS.password.min })}
               </Text>
             )}
 
             {/* ── SHIFT TIMINGS ── */}
-            <SectionHeader title="Shift Timings" icon="time-outline" cvw={cvw} isTablet={isTablet} />
+            <SectionHeader title={t("staff.shiftTimings", "Shift Timings")} icon="time-outline" cvw={cvw} isTablet={isTablet} />
             <View style={{ flexDirection: "row", gap: cvw * 3 }}>
               <View style={{ flex: 1 }}>
-                <FieldLabel icon="sunny-outline" label="Start Time" hint="24-hr format (HH:MM)" optional cvw={cvw} isTablet={isTablet} />
-                <StyledInput value={shiftStart} onChangeText={(t) => setShiftStart(formatShiftTime(t))} placeholder="09:00" keyboardType="numeric" maxLength={5} cvw={cvw} isTablet={isTablet} />
+                <FieldLabel icon="sunny-outline" label={t("staff.startTime", "Start Time")} hint={t("staff.timeFormatHint", "24-hr format (HH:MM)")} optional cvw={cvw} isTablet={isTablet} />
+                <StyledInput value={shiftStart} onChangeText={(tVal) => setShiftStart(formatShiftTime(tVal))} placeholder="09:00" keyboardType="numeric" maxLength={5} cvw={cvw} isTablet={isTablet} />
               </View>
               <View style={{ flex: 1 }}>
-                <FieldLabel icon="moon-outline" label="End Time" hint="24-hr format (HH:MM)" optional cvw={cvw} isTablet={isTablet} />
-                <StyledInput value={shiftEnd} onChangeText={(t) => setShiftEnd(formatShiftTime(t))} placeholder="18:00" keyboardType="numeric" maxLength={5} cvw={cvw} isTablet={isTablet} />
+                <FieldLabel icon="moon-outline" label={t("staff.endTime", "End Time")} hint={t("staff.timeFormatHint", "24-hr format (HH:MM)")} optional cvw={cvw} isTablet={isTablet} />
+                <StyledInput value={shiftEnd} onChangeText={(tVal) => setShiftEnd(formatShiftTime(tVal))} placeholder="18:00" keyboardType="numeric" maxLength={5} cvw={cvw} isTablet={isTablet} />
               </View>
             </View>
 
             {/* ── ROLE ── */}
             {roles.length > 0 && (
               <>
-                <SectionHeader title="Role" icon="shield-outline" cvw={cvw} isTablet={isTablet} />
+                <SectionHeader title={t("staff.role", "Role")} icon="shield-outline" cvw={cvw} isTablet={isTablet} />
                 <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3, marginBottom: isTablet ? cvw * 1.5 : cvw * 3 }}>
-                  Controls what this staff member can access in the system
+                  {t("staff.roleHintEdit", "Controls what this staff member can access in the system")}
                 </Text>
                 {isTablet ? (
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: cvw * 1.5, marginBottom: cvw * 2 }}>
@@ -708,9 +714,9 @@ export default function EditStaffScreen() {
             {/* ── ASSIGN LOCATION ── */}
             {sites.length > 0 && (
               <>
-                <SectionHeader title="Assign Location" icon="location-outline" cvw={cvw} isTablet={isTablet} />
+                <SectionHeader title={t("staff.assignLocation", "Assign Location")} icon="location-outline" cvw={cvw} isTablet={isTablet} />
                 <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3, marginBottom: isTablet ? cvw * 1.5 : cvw * 3 }}>
-                  Select one or more sites for attendance tracking
+                  {t("staff.assignLocationHint", "Select one or more sites for attendance tracking")}
                 </Text>
                 {isTablet ? (
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: cvw * 1.5, marginBottom: cvw * 2 }}>
@@ -729,15 +735,15 @@ export default function EditStaffScreen() {
             )}
 
             {/* ── DOCUMENTS ── */}
-            <SectionHeader title="Documents" icon="document-outline" cvw={cvw} isTablet={isTablet} />
+            <SectionHeader title={t("staff.documents", "Documents")} icon="document-outline" cvw={cvw} isTablet={isTablet} />
             <Text style={{ color: C.muted, fontSize: isTablet ? cvw * 1.8 : cvw * 3, marginBottom: isTablet ? cvw * 1.5 : cvw * 3 }}>
-              Replace existing files by uploading new ones — leave unchanged to keep current
+              {t("staff.replaceFilesHint", "Replace existing files by uploading new ones — leave unchanged to keep current")}
             </Text>
 
             <UploadButton
               icon="camera-outline"
-              label={profilePhoto ? "Profile Photo Updated" : "Change Profile Photo"}
-              hint={profilePhoto ? profilePhoto.uri?.split("/").pop() : existingProfileUrl ? "Photo on file — tap to replace" : "No photo yet — tap to upload"}
+              label={profilePhoto ? t("staff.profilePhotoUpdated", "Profile Photo Updated") : t("staff.changeProfilePhoto", "Change Profile Photo")}
+              hint={profilePhoto ? profilePhoto.uri?.split("/").pop() : existingProfileUrl ? t("staff.photoOnFile", "Photo on file — tap to replace") : t("staff.noPhotoYet", "No photo yet — tap to upload")}
               selected={!!profilePhoto || !!existingProfileUrl}
               onPress={pickProfilePhoto}
               preview={profilePhoto?.uri ?? existingProfileUrl ?? null}
@@ -745,8 +751,8 @@ export default function EditStaffScreen() {
             />
             <UploadButton
               icon="id-card-outline"
-              label={idProof ? "ID Proof Updated" : "Change ID Proof"}
-              hint={idProof ? (idProof.name || idProof.uri?.split("/").pop()) : existingIdProofUrl ? "ID proof on file — tap to replace" : "No ID proof yet — tap to upload"}
+              label={idProof ? t("staff.idProofUpdated", "ID Proof Updated") : t("staff.changeIdProof", "Change ID Proof")}
+              hint={idProof ? (idProof.name || idProof.uri?.split("/").pop()) : existingIdProofUrl ? t("staff.idProofOnFile", "ID proof on file — tap to replace") : t("staff.noIdProofYet", "No ID proof yet — tap to upload")}
               selected={!!idProof || !!existingIdProofUrl}
               onPress={pickIdProof}
               preview={
@@ -767,14 +773,14 @@ export default function EditStaffScreen() {
               marginBottom: isTablet ? cvw * 2 : cvw * 4,
             }} />
 
-            <SectionHeader title="Self Upload" icon="cloud-upload-outline" cvw={cvw} isTablet={isTablet} />
+            <SectionHeader title={t("staff.selfUpload", "Self Upload")} icon="cloud-upload-outline" cvw={cvw} isTablet={isTablet} />
             <Text style={{
               color: C.muted,
               fontSize: isTablet ? cvw * 1.8 : cvw * 3,
               marginBottom: isTablet ? cvw * 1.5 : cvw * 3,
               lineHeight: isTablet ? cvw * 2.8 : cvw * 4.5,
             }}>
-              Allow this staff member to upload their own documents from the app
+              {t("staff.selfUploadHint", "Allow this staff member to upload their own documents from the app")}
             </Text>
 
             {/* Tablet: side-by-side | Phone: stacked */}
@@ -783,8 +789,8 @@ export default function EditStaffScreen() {
                 <View style={{ flex: 1 }}>
                   <ToggleRow
                     icon="camera-outline"
-                    label="Profile Photo Upload"
-                    description="Staff can update their own profile photo"
+                    label={t("staff.profilePhotoUpload", "Profile Photo Upload")}
+                    description={t("staff.profilePhotoUploadHint", "Staff can update their own profile photo")}
                     value={allowSelfPhotoUpload}
                     onToggle={() => setAllowSelfPhotoUpload((p) => !p)}
                     cvw={cvw} isTablet={isTablet}
@@ -793,8 +799,8 @@ export default function EditStaffScreen() {
                 <View style={{ flex: 1 }}>
                   <ToggleRow
                     icon="id-card-outline"
-                    label="ID Proof Upload"
-                    description="Staff can upload their own ID proof document"
+                    label={t("staff.idProofUploadToggle", "ID Proof Upload")}
+                    description={t("staff.idProofUploadHint", "Staff can upload their own ID proof document")}
                     value={allowSelfIdUpload}
                     onToggle={() => setAllowSelfIdUpload((p) => !p)}
                     cvw={cvw} isTablet={isTablet}
@@ -805,16 +811,16 @@ export default function EditStaffScreen() {
               <>
                 <ToggleRow
                   icon="camera-outline"
-                  label="Profile Photo Upload"
-                  description="Staff can update their own profile photo"
+                  label={t("staff.profilePhotoUpload", "Profile Photo Upload")}
+                  description={t("staff.profilePhotoUploadHint", "Staff can update their own profile photo")}
                   value={allowSelfPhotoUpload}
                   onToggle={() => setAllowSelfPhotoUpload((p) => !p)}
                   cvw={cvw} isTablet={isTablet}
                 />
                 <ToggleRow
                   icon="id-card-outline"
-                  label="ID Proof Upload"
-                  description="Staff can upload their own ID proof document"
+                  label={t("staff.idProofUploadToggle", "ID Proof Upload")}
+                  description={t("staff.idProofUploadHint", "Staff can upload their own ID proof document")}
                   value={allowSelfIdUpload}
                   onToggle={() => setAllowSelfIdUpload((p) => !p)}
                   cvw={cvw} isTablet={isTablet}
@@ -842,7 +848,7 @@ export default function EditStaffScreen() {
                 : <Ionicons name="save-outline" size={isTablet ? cvw * 2.6 : cvw * 5} color="#000" />
               }
               <Text style={{ color: saving ? C.muted : "#000", fontWeight: "800", fontSize: isTablet ? cvw * 2.6 : cvw * 4, letterSpacing: 0.3, textTransform: "uppercase" }}>
-                {saving ? "Saving Changes…" : "Save Changes"}
+                {saving ? t("roles.saving", "Saving Changes…") : t("settings.saveChanges", "Save Changes")}
               </Text>
             </TouchableOpacity>
 
