@@ -575,7 +575,7 @@ const resources = {
         loginButton: "लॉगिन करें",
         createNewCompany: "नया कंपनी एकाउंट बनाएँ",
         needHelp: "क्या सहायता चाहिए? सहायता टीम से संपर्क करें",
-        poweredBy: "फीदरटेक द्वारा संचालित",
+        poweredBy: "फ़ेथरटेक द्वारा संचालित",
         contactFeathrTech: "फ़ेथरटेक से संपर्क करें",
         hereToHelp: "हम आपकी सहायता के लिए यहाँ हैं",
         supportAvailable: "सहायता सोम-शनि, सुबह 9 - शाम 6 IST उपलब्ध है",

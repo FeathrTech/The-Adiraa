@@ -316,9 +316,9 @@ export default function LoginScreen() {
           <TouchableOpacity
             onPress={() => navigation.navigate("Signup")}
             style={{ marginTop: vh * 3, alignItems: "center" }}>
-            <Text style={{ color: C.gold, fontSize: isTablet ? 14 : 13, fontWeight: "600" }}>
+            {/* <Text style={{ color: C.gold, fontSize: isTablet ? 14 : 13, fontWeight: "600" }}>
               {t("auth.createNewCompany")}
-            </Text>
+            </Text> */}
           </TouchableOpacity>
 
           {/* ✅ Support link — opens modal on press */}

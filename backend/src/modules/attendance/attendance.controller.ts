@@ -157,4 +157,28 @@ export class AttendanceController {
     return this.service.getUserAttendanceAnalytics(userId, req.user, month);
   }
 
+  /* ================= REPORTS ================= */
+
+  @Get('report/summary')
+  @RequirePermission('attendance.view.dashboard_summary')
+  getReportSummary(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('role') role: string,
+    @Query('staffId') staffId: string,
+    @Query('lateOnly') lateOnly: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.service.getReportSummary(
+      { startDate, endDate, role, staffId, lateOnly: lateOnly === 'true' },
+      user,
+    );
+  }
+
+  @Get('report/staff-list')
+  @RequirePermission('attendance.view.dashboard_summary')
+  getStaffList(@CurrentUser() user: User) {
+    return this.service.getStaffListForReport(user);
+  }
+
 }

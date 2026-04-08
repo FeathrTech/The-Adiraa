@@ -731,4 +731,198 @@ export class AttendanceService {
       isAbsent: r.isAbsent,
     }));
   }
+
+  // ============================
+  // REPORT SUMMARY
+  // ============================
+
+  async getReportSummary(
+    filters: {
+      startDate: string;
+      endDate: string;
+      role?: string;
+      staffId?: string;
+      lateOnly?: boolean;
+    },
+    admin: User,
+  ) {
+    const { startDate, endDate, role, staffId, lateOnly } = filters;
+
+    const todayIST = new Date().toLocaleDateString('en-CA', {
+      timeZone: 'Asia/Kolkata',
+    });
+
+    // ── Build user query ───────────────────────────────────────────────────────
+    const userQuery = this.userRepo.createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'role')
+      .where('user.tenant = :tenantId', { tenantId: admin.tenant.id });
+
+    if (staffId) {
+      userQuery.andWhere('user.id = :staffId', { staffId });
+    }
+    if (role) {
+      userQuery.andWhere('role.id = :roleId', { roleId: role });
+    }
+
+    const users = await userQuery.getMany();
+
+    // ── Get all attendance records in range ────────────────────────────────────
+    const attendanceQuery = this.attendanceRepo.createQueryBuilder('att')
+      .leftJoinAndSelect('att.user', 'user')
+      .leftJoinAndSelect('user.roles', 'role')
+      .where('att.tenant = :tenantId', { tenantId: admin.tenant.id })
+      .andWhere('att.attendanceDate >= :startDate', { startDate })
+      .andWhere('att.attendanceDate <= :endDate', { endDate });
+
+    if (staffId) {
+      attendanceQuery.andWhere('user.id = :staffId', { staffId });
+    }
+    if (role) {
+      attendanceQuery.andWhere('role.id = :roleId', { roleId: role });
+    }
+
+    const records = await attendanceQuery.getMany();
+
+    // ── Build all dates in range (excluding future dates) ─────────────────────
+    const allDates: string[] = [];
+    const cursor = new Date(startDate + 'T00:00:00');
+    const endDay = new Date(endDate + 'T00:00:00');
+
+    while (cursor <= endDay) {
+      const dateStr = cursor.toLocaleDateString('en-CA', {
+        timeZone: 'Asia/Kolkata',
+      });
+      // Only include up to today — future dates are not absent
+      if (dateStr <= todayIST) {
+        allDates.push(dateStr);
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const totalDays = allDates.length;
+
+    // ── Per-staff summary ──────────────────────────────────────────────────────
+    let grandTotalPresent = 0;
+    let grandTotalAbsent = 0;
+    let grandTotalLate = 0;
+    let grandTotalHalfDay = 0;
+
+    const staffSummary = users.map((u) => {
+      const userRecords = records.filter((r) => r.user.id === u.id);
+
+      // Only count dates from when the user was created
+      const userJoinDate = u.createdAt
+        ? new Date(u.createdAt).toLocaleDateString('en-CA', {
+          timeZone: 'Asia/Kolkata',
+        })
+        : startDate;
+
+      // Dates this user is eligible for (joined before or on that date)
+      const eligibleDates = allDates.filter((d) => d >= userJoinDate);
+
+      let presentDays = 0;
+      let lateDays = 0;
+      let absentDays = 0;
+      let halfDays = 0;
+      let totalMinutes = 0;
+
+      for (const dateStr of eligibleDates) {
+        const record = userRecords.find((r) => r.attendanceDate === dateStr);
+
+        if (!record) {
+          // ── No record at all → Absent ──────────────────────────────────────
+          // Skip today if no record (still NotMarked, not Absent)
+          if (dateStr !== todayIST) {
+            absentDays++;
+          }
+        } else if (record.isAbsent) {
+          // ── Explicitly marked absent ────────────────────────────────────────
+          absentDays++;
+        } else if (record.checkInTime) {
+          // ── Has check-in → Present or Late ─────────────────────────────────
+          presentDays++;
+          if (record.isLate) lateDays++;
+          if (record.isHalfDay) halfDays++;
+
+          if (record.checkInTime && record.checkOutTime) {
+            totalMinutes +=
+              (new Date(record.checkOutTime).getTime() -
+                new Date(record.checkInTime).getTime()) /
+              60000;
+          }
+        } else {
+          // ── Record exists but no check-in and not absent ────────────────────
+          // (e.g. a record with only checkout, edge case) → treat as absent
+          if (dateStr !== todayIST) {
+            absentDays++;
+          }
+        }
+      }
+
+      grandTotalPresent += presentDays;
+      grandTotalAbsent += absentDays;
+      grandTotalLate += lateDays;
+      grandTotalHalfDay += halfDays;
+
+      const eligibleCount = eligibleDates.length;
+
+      return {
+        id: u.id,
+        name: u.name,
+        roles: u.roles.map((r) => r.name),
+        // ── ADD THESE TWO ──
+        joinDate: userJoinDate,           // "YYYY-MM-DD" string
+        eligibleDays: eligibleDates.length,
+        // ── existing fields ──
+        presentDays,
+        lateDays,
+        absentDays,
+        halfDays,
+        totalWorkingMinutes: Math.floor(totalMinutes),
+        attendanceRate:
+          eligibleDates.length > 0
+            ? Math.round((presentDays / eligibleDates.length) * 100)
+            : 0,
+      };
+    });
+
+    // ── Apply lateOnly filter after computing ──────────────────────────────────
+    const filteredStaff = lateOnly
+      ? staffSummary.filter((s) => s.lateDays > 0)
+      : staffSummary;
+
+    return {
+      meta: {
+        startDate,
+        endDate,
+        totalDays,
+        totalStaff: users.length,
+      },
+      totals: {
+        present: grandTotalPresent,
+        absent: grandTotalAbsent,
+        late: grandTotalLate,
+        halfDay: grandTotalHalfDay,
+      },
+      staff: filteredStaff,
+    };
+  }
+
+  // ============================
+  // STAFF LIST FOR REPORT FILTERS
+  // ============================
+
+  async getStaffListForReport(admin: User) {
+    const users = await this.userRepo.find({
+      where: { tenant: { id: admin.tenant.id } },
+      relations: ['roles'],
+      order: { name: 'ASC' },
+    });
+
+    return users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      roles: u.roles.map((r) => ({ id: r.id, name: r.name })),
+    }));
+  }
 }
