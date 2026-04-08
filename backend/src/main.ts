@@ -11,6 +11,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:3000', // ← already have this, keep it
       'http://localhost:3001',
+      'https://the-adiraa-1.onrender.com'
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
