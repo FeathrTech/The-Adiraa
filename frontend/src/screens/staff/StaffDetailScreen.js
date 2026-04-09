@@ -1019,9 +1019,17 @@ function AvatarCircle({ user, initials, avatarLoading, setAvatarLoading, avatarE
 }
 
 // ─── Profile info block ───────────────────────────────────────────────────────
+// ─── Profile info block ───────────────────────────────────────────────────────
 function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTablet, centered, onUserUpdated, onViewIdProof }) {
   const { t } = useTranslation();
   const [actionLoading, setActionLoading] = useState(null);
+
+  // ── Owner / Self detection ─────────────────────────────────────────────────
+  const currentUser = useAuthStore((s) => s.user);
+  const isSelf = currentUser?.id === user?.id;
+  const targetIsOwner = user.roles?.some(
+    (r) => r.name?.toLowerCase() === "owner"
+  );
 
   const handleDeactivate = () => {
     Alert.alert(
@@ -1142,7 +1150,12 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
       {/* ── ACTION BUTTONS ── */}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: centered ? "center" : "flex-start" }}>
 
-        {canEdit && (
+        {/*
+          Edit button logic:
+          - If target is owner → only show if you ARE that owner (isSelf)
+          - If target is NOT owner → normal permission check
+        */}
+        {canEdit && (targetIsOwner ? isSelf : true) && (
           <TouchableOpacity
             onPress={() => navigation.navigate("EditStaff", { user })}
             activeOpacity={0.8}
@@ -1154,7 +1167,9 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
             }}
           >
             <Ionicons name="pencil-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.gold} />
-            <Text style={{ color: C.gold, fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>{t("roles.edit", "Edit")}</Text>
+            <Text style={{ color: C.gold, fontWeight: "600", fontSize: isTablet ? cvw * 2 : cvw * 3.2 }}>
+              {isSelf ? t("staff.editMyProfile", "Edit My Profile") : t("roles.edit", "Edit")}
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -1176,7 +1191,8 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
           </TouchableOpacity>
         )}
 
-        {canDelete && isActive && (
+        {/* Deactivate — never for owners */}
+        {canDelete && isActive && !targetIsOwner && (
           <TouchableOpacity
             activeOpacity={0.8} onPress={handleDeactivate}
             disabled={actionLoading === "deactivate"}
@@ -1198,7 +1214,8 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
           </TouchableOpacity>
         )}
 
-        {canEdit && !isActive && (
+        {/* Reactivate — never for owners */}
+        {canEdit && !isActive && !targetIsOwner && (
           <TouchableOpacity
             activeOpacity={0.8} onPress={handleActivate}
             disabled={actionLoading === "activate"}
@@ -1220,7 +1237,8 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
           </TouchableOpacity>
         )}
 
-        {canDelete && !isActive && (
+        {/* Delete — never for owners */}
+        {canDelete && !isActive && !targetIsOwner && (
           <TouchableOpacity
             activeOpacity={0.8} onPress={handleDelete}
             disabled={actionLoading === "delete"}
@@ -1240,6 +1258,27 @@ function ProfileInfo({ user, roleLabel, userPermissions, navigation, cvw, isTabl
               {t("roles.delete", "Delete")}
             </Text>
           </TouchableOpacity>
+        )}
+
+        {/* Info hint when viewing owner as non-owner */}
+        {targetIsOwner && !isSelf && (
+          <View style={{
+            flexDirection: "row", alignItems: "center", gap: 8,
+            backgroundColor: "rgba(255,255,255,0.03)",
+            borderWidth: 1, borderColor: C.border,
+            borderRadius: 10,
+            paddingHorizontal: isTablet ? cvw * 2 : cvw * 3.5,
+            paddingVertical: isTablet ? cvw * 0.8 : cvw * 2,
+          }}>
+            <Ionicons name="information-circle-outline" size={isTablet ? cvw * 1.8 : cvw * 3.5} color={C.muted} />
+            <Text style={{
+              color: C.muted,
+              fontSize: isTablet ? cvw * 1.8 : cvw * 2.8,
+              fontStyle: "italic",
+            }}>
+              {t("staff.ownerEditHint", "Owner profile can only be edited by the owner")}
+            </Text>
+          </View>
         )}
       </View>
     </View>

@@ -295,6 +295,17 @@ function ChevronRightIcon({ size = 20 }) {
   );
 }
 
+function InfoIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} fill="none" stroke="currentColor"
+      strokeWidth="2" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  );
+}
+
 // ─── Status Meta ──────────────────────────────────────────────────────────────
 function getStatusMeta(s) {
   return ({
@@ -643,12 +654,10 @@ function StatTile({ label, value, icon }) {
 }
 
 // ─── Avatar Circle ────────────────────────────────────────────────────────────
-// ─── Avatar Circle ────────────────────────────────────────────────────────────
 function AvatarCircle({ user, initials, size = 96 }) {
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Computed once on mount — stable across all re-renders
   const photoSrc = useRef(
     user.profilePhotoUrl
       ? `${user.profilePhotoUrl}?t=${Date.now()}`
@@ -669,7 +678,7 @@ function AvatarCircle({ user, initials, size = 96 }) {
       {showImg && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={photoSrc.current}  // ✅ stable ref, never changes
+          src={photoSrc.current}
           alt={user.name}
           onLoad={() => setLoading(false)}
           onError={() => { setLoading(false); setError(true); }}
@@ -831,6 +840,7 @@ function MiniCalendar({ markedDates, selectedDate, onDayPress, onMonthChange }) 
 export default function StaffDetailScreen({ user: userProp }) {
   const router = useRouter();
   const permissions = useAuthStore((s) => s.permissions);
+  const currentUser = useAuthStore((s) => s.user);
 
   // ── Permission flags ───────────────────────────────────────────────────────
   const canViewAttendance = can(permissions, "attendance.view.staff_history");
@@ -871,7 +881,7 @@ export default function StaffDetailScreen({ user: userProp }) {
 
   // ── Load analytics ─────────────────────────────────────────────────────────
   const loadAnalytics = useCallback(async () => {
-    if (!canViewAttendance) return; // only load if permitted
+    if (!canViewAttendance) return;
     const month = currentMonthRef.current;
     const userId = userIdRef.current;
     if (!userId) return;
@@ -1020,6 +1030,12 @@ export default function StaffDetailScreen({ user: userProp }) {
   const canEdit = can(permissions, ACTION_PERMISSIONS.staff.edit);
   const canDelete = can(permissions, ACTION_PERMISSIONS.staff.delete);
   const statusMeta = getStatusMeta(stats.status);
+
+  // ── Owner / Self detection ─────────────────────────────────────────────────
+  const isSelf = currentUser?.id === user?.id;
+  const targetIsOwner = user.roles?.some(
+    (r) => r.name?.toLowerCase() === "owner"
+  );
 
   const filteredLogs = selectedDate
     ? logs.filter((l) =>
@@ -1231,7 +1247,7 @@ export default function StaffDetailScreen({ user: userProp }) {
                 fontWeight: 900, letterSpacing: "-0.5px",
                 margin: 0, lineHeight: 1,
               }}>
-                Staff Profile
+                {isSelf ? "My Profile" : "Staff Profile"}
               </h1>
             </div>
           </div>
@@ -1289,7 +1305,12 @@ export default function StaffDetailScreen({ user: userProp }) {
                   <div className="action-btns" style={{
                     display: "flex", flexWrap: "wrap", gap: 8,
                   }}>
-                    {canEdit && (
+                    {/*
+                      Edit button logic:
+                      - If target is owner → only show if you ARE that owner (isSelf)
+                      - If target is NOT owner → normal permission check
+                    */}
+                    {canEdit && (targetIsOwner ? isSelf : true) && (
                       <button
                         className="action-btn"
                         onClick={() =>
@@ -1302,7 +1323,7 @@ export default function StaffDetailScreen({ user: userProp }) {
                         }}
                       >
                         <EditIcon size={14} />
-                        Edit
+                        {isSelf ? "Edit My Profile" : "Edit"}
                       </button>
                     )}
 
@@ -1321,7 +1342,8 @@ export default function StaffDetailScreen({ user: userProp }) {
                       </button>
                     )}
 
-                    {canDelete && isActive && !user.roles?.some((r) => r.name?.toLowerCase() === "owner") && (
+                    {/* Deactivate — never for owners */}
+                    {canDelete && isActive && !targetIsOwner && (
                       <button
                         className="action-btn"
                         onClick={() => setConfirmDialog({
@@ -1342,7 +1364,8 @@ export default function StaffDetailScreen({ user: userProp }) {
                       </button>
                     )}
 
-                    {canEdit && !isActive && (
+                    {/* Reactivate — never for owners */}
+                    {canEdit && !isActive && !targetIsOwner && (
                       <button
                         className="action-btn"
                         onClick={() => setConfirmDialog({
@@ -1363,7 +1386,8 @@ export default function StaffDetailScreen({ user: userProp }) {
                       </button>
                     )}
 
-                    {canDelete && !isActive && (
+                    {/* Delete — never for owners */}
+                    {canDelete && !isActive && !targetIsOwner && (
                       <button
                         className="action-btn"
                         onClick={() => setConfirmDialog({
@@ -1382,6 +1406,25 @@ export default function StaffDetailScreen({ user: userProp }) {
                         <TrashIcon size={14} />
                         Delete
                       </button>
+                    )}
+
+                    {/* Info hint when viewing owner as non-owner */}
+                    {targetIsOwner && !isSelf && (
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        backgroundColor: "rgba(255,255,255,0.03)",
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 10,
+                        padding: "8px 14px",
+                      }}>
+                        <InfoIcon size={14} />
+                        <span style={{
+                          color: C.muted, fontSize: 12,
+                          fontStyle: "italic",
+                        }}>
+                          Owner profile can only be edited by the owner
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>

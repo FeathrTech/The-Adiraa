@@ -31,14 +31,14 @@ const C = {
 
 // ─── Limits ───────────────────────────────────────────────────────────────────
 const LIMITS = {
-  name:     { min: 2, max: 60 },
-  email:    { max: 254 },
+  name: { min: 2, max: 60 },
+  email: { max: 254 },
   password: { min: 8, max: 128 },
-  shift:    { max: 5 },
+  shift: { max: 5 },
 };
 
 // ─── Validators ───────────────────────────────────────────────────────────────
-const isValidTime  = (t) => !t || /^([01]\d|2[0-3]):([0-5]\d)$/.test(t);
+const isValidTime = (t) => !t || /^([01]\d|2[0-3]):([0-5]\d)$/.test(t);
 const isValidEmail = (e) => !e || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 const formatShiftTime = (text) => {
   const digits = text.replace(/[^0-9]/g, "");
@@ -312,19 +312,19 @@ function Toast({ toast, onClose }) {
   useEffect(() => {
     if (!toast || !progressRef.current) return;
     progressRef.current.style.transition = "none";
-    progressRef.current.style.transform  = "scaleX(1)";
+    progressRef.current.style.transform = "scaleX(1)";
     void progressRef.current.offsetWidth;
     progressRef.current.style.transition = "transform 3.5s linear";
-    progressRef.current.style.transform  = "scaleX(0)";
+    progressRef.current.style.transform = "scaleX(0)";
   }, [toast]);
 
   if (!toast) return null;
 
   const isError = toast.type === "error";
-  const accent  = isError ? C.red   : C.green;
-  const bg      = isError ? "rgba(20,10,10,0.97)"   : "rgba(10,18,12,0.97)";
-  const border  = isError ? "rgba(229,115,115,0.5)"  : "rgba(93,190,138,0.5)";
-  const iconBg  = isError ? "rgba(229,115,115,0.15)" : "rgba(93,190,138,0.15)";
+  const accent = isError ? C.red : C.green;
+  const bg = isError ? "rgba(20,10,10,0.97)" : "rgba(10,18,12,0.97)";
+  const border = isError ? "rgba(229,115,115,0.5)" : "rgba(93,190,138,0.5)";
+  const iconBg = isError ? "rgba(229,115,115,0.15)" : "rgba(93,190,138,0.15)";
 
   return (
     <>
@@ -337,65 +337,65 @@ function Toast({ toast, onClose }) {
         .toast-drop { animation: toastDrop .42s cubic-bezier(.34,1.56,.64,1) forwards; }
       `}</style>
       <div className="toast-drop" style={{
-        position:"fixed", top:20, left:"50%",
-        zIndex:99999, width:"min(420px,92vw)",
-        pointerEvents:"auto",
+        position: "fixed", top: 20, left: "50%",
+        zIndex: 99999, width: "min(420px,92vw)",
+        pointerEvents: "auto",
       }}>
         <div style={{
-          backgroundColor:bg, borderRadius:18,
-          border:`1px solid ${border}`,
-          boxShadow:`0 10px 40px ${isError
+          backgroundColor: bg, borderRadius: 18,
+          border: `1px solid ${border}`,
+          boxShadow: `0 10px 40px ${isError
             ? "rgba(229,115,115,0.18)"
             : "rgba(93,190,138,0.18)"
-          },0 2px 10px rgba(0,0,0,0.7)`,
-          display:"flex", alignItems:"center",
-          gap:12, padding:"12px 14px",
+            },0 2px 10px rgba(0,0,0,0.7)`,
+          display: "flex", alignItems: "center",
+          gap: 12, padding: "12px 14px",
         }}>
           <div style={{
-            width:38, height:38, borderRadius:11,
-            backgroundColor:iconBg,
-            display:"flex", alignItems:"center",
-            justifyContent:"center",
-            flexShrink:0, color:accent,
+            width: 38, height: 38, borderRadius: 11,
+            backgroundColor: iconBg,
+            display: "flex", alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0, color: accent,
           }}>
             {isError ? <XCircleIcon /> : <CheckCircleIcon />}
           </div>
-          <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{
-              color:accent, fontSize:10, fontWeight:800,
-              letterSpacing:"2px", textTransform:"uppercase",
-              margin:"0 0 3px",
+              color: accent, fontSize: 10, fontWeight: 800,
+              letterSpacing: "2px", textTransform: "uppercase",
+              margin: "0 0 3px",
             }}>
               {isError ? "Error" : "Success"}
             </p>
             <p style={{
-              color:C.white, fontSize:13, fontWeight:500,
-              lineHeight:1.4, margin:0, wordBreak:"break-word",
+              color: C.white, fontSize: 13, fontWeight: 500,
+              lineHeight: 1.4, margin: 0, wordBreak: "break-word",
             }}>
               {toast.msg}
             </p>
           </div>
           <button onClick={onClose} style={{
-            width:28, height:28, borderRadius:9,
-            border:"none", cursor:"pointer",
+            width: 28, height: 28, borderRadius: 9,
+            border: "none", cursor: "pointer",
             backgroundColor: isError
               ? "rgba(229,115,115,0.1)"
               : "rgba(93,190,138,0.1)",
-            color:accent,
-            display:"flex", alignItems:"center",
-            justifyContent:"center", flexShrink:0,
+            color: accent,
+            display: "flex", alignItems: "center",
+            justifyContent: "center", flexShrink: 0,
           }}>
             <XIcon size={13} />
           </button>
         </div>
         <div style={{
-          height:3, backgroundColor:"rgba(255,255,255,0.06)",
-          borderRadius:2, marginTop:5, marginInline:4,
-          overflow:"hidden",
+          height: 3, backgroundColor: "rgba(255,255,255,0.06)",
+          borderRadius: 2, marginTop: 5, marginInline: 4,
+          overflow: "hidden",
         }}>
           <div ref={progressRef} style={{
-            height:"100%", borderRadius:2,
-            backgroundColor:accent, transformOrigin:"left",
+            height: "100%", borderRadius: 2,
+            backgroundColor: accent, transformOrigin: "left",
           }} />
         </div>
       </div>
@@ -407,27 +407,27 @@ function Toast({ toast, onClose }) {
 function SectionHeader({ icon, title }) {
   return (
     <div style={{
-      display:"flex", alignItems:"center", gap:10,
-      margin:"28px 0 18px",
+      display: "flex", alignItems: "center", gap: 10,
+      margin: "28px 0 18px",
     }}>
       <div style={{
-        width:34, height:34, borderRadius:10,
-        backgroundColor:"rgba(201,162,39,0.12)",
-        border:`1px solid ${C.borderGold}`,
-        display:"flex", alignItems:"center",
-        justifyContent:"center",
-        color:C.gold, flexShrink:0,
+        width: 34, height: 34, borderRadius: 10,
+        backgroundColor: "rgba(201,162,39,0.12)",
+        border: `1px solid ${C.borderGold}`,
+        display: "flex", alignItems: "center",
+        justifyContent: "center",
+        color: C.gold, flexShrink: 0,
       }}>
         {icon}
       </div>
       <span style={{
-        color:C.gold, fontWeight:700,
-        fontSize:11, letterSpacing:"2.5px",
-        textTransform:"uppercase",
+        color: C.gold, fontWeight: 700,
+        fontSize: 11, letterSpacing: "2.5px",
+        textTransform: "uppercase",
       }}>
         {title}
       </span>
-      <div style={{ flex:1, height:1, backgroundColor:C.border }} />
+      <div style={{ flex: 1, height: 1, backgroundColor: C.border }} />
     </div>
   );
 }
@@ -435,23 +435,23 @@ function SectionHeader({ icon, title }) {
 // ─── Field Label ──────────────────────────────────────────────────────────────
 function FieldLabel({ icon, label, hint, optional, required }) {
   return (
-    <div style={{ marginBottom:6 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-        <span style={{ color:C.gold, display:"flex", alignItems:"center" }}>
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ color: C.gold, display: "flex", alignItems: "center" }}>
           {icon}
         </span>
-        <span style={{ color:C.white, fontWeight:700, fontSize:13 }}>
+        <span style={{ color: C.white, fontWeight: 700, fontSize: 13 }}>
           {label}
         </span>
         {required && (
-          <span style={{ color:C.red, fontWeight:800, fontSize:14 }}>*</span>
+          <span style={{ color: C.red, fontWeight: 800, fontSize: 14 }}>*</span>
         )}
         {optional && (
-          <span style={{ color:C.muted, fontSize:11 }}>(optional)</span>
+          <span style={{ color: C.muted, fontSize: 11 }}>(optional)</span>
         )}
       </div>
       {hint && (
-        <p style={{ color:C.muted, fontSize:11, margin:"3px 0 0 22px" }}>
+        <p style={{ color: C.muted, fontSize: 11, margin: "3px 0 0 22px" }}>
           {hint}
         </p>
       )}
@@ -462,23 +462,23 @@ function FieldLabel({ icon, label, hint, optional, required }) {
 // ─── Username Row ─────────────────────────────────────────────────────────────
 function UsernameRow({ username }) {
   return (
-    <div style={{ marginBottom:16 }}>
+    <div style={{ marginBottom: 16 }}>
       <FieldLabel
         icon={<AtIcon size={14} />}
         label="Username"
         hint="Login ID — cannot be changed"
       />
       <div style={{
-        display:"flex", alignItems:"center", gap:8,
-        backgroundColor:C.faint,
-        border:`1px solid ${C.border}`,
-        borderRadius:11,
-        padding:"11px 14px",
+        display: "flex", alignItems: "center", gap: 8,
+        backgroundColor: C.faint,
+        border: `1px solid ${C.border}`,
+        borderRadius: 11,
+        padding: "11px 14px",
       }}>
-        <span style={{ color:C.muted, display:"flex", alignItems:"center" }}>
+        <span style={{ color: C.muted, display: "flex", alignItems: "center" }}>
           <LockIcon size={14} />
         </span>
-        <span style={{ color:C.muted, fontSize:14 }}>{username}</span>
+        <span style={{ color: C.muted, fontSize: 14 }}>{username}</span>
       </div>
     </div>
   );
@@ -489,12 +489,12 @@ function StyledInput({
   value, onChange, placeholder, type = "text",
   maxLength, showCount, isPhone, disabled = false,
 }) {
-  const [focused,  setFocused]  = useState(false);
-  const [showPwd,  setShowPwd]  = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
 
-  const len       = value?.length ?? 0;
+  const len = value?.length ?? 0;
   const nearLimit = maxLength && len >= Math.floor(maxLength * 0.85);
-  const atLimit   = maxLength && len >= maxLength;
+  const atLimit = maxLength && len >= maxLength;
   const counterColor = atLimit ? C.red : nearLimit ? C.orange : C.muted;
 
   const borderColor = disabled
@@ -510,13 +510,13 @@ function StyledInput({
 
   if (isPhone) {
     return (
-      <div style={{ marginBottom:16 }}>
+      <div style={{ marginBottom: 16 }}>
         <div style={{
-          display:"flex", alignItems:"center",
+          display: "flex", alignItems: "center",
           backgroundColor: disabled ? C.faint : C.inputBg,
-          border:`1px solid ${focused ? C.gold : C.border}`,
-          borderRadius:11, padding:"0 14px",
-          transition:"border-color .15s",
+          border: `1px solid ${focused ? C.gold : C.border}`,
+          borderRadius: 11, padding: "0 14px",
+          transition: "border-color .15s",
         }}>
           <input
             value={value}
@@ -528,22 +528,22 @@ function StyledInput({
             maxLength={10}
             disabled={disabled}
             style={{
-              flex:1, background:"none", border:"none",
-              outline:"none",
+              flex: 1, background: "none", border: "none",
+              outline: "none",
               color: disabled ? C.muted : C.white,
-              fontSize:14, padding:"11px 0", caretColor:C.gold,
+              fontSize: 14, padding: "11px 0", caretColor: C.gold,
             }}
           />
           <span style={{
             color: len === 10 ? C.gold : C.muted,
-            fontSize:12, fontWeight:600,
-            marginLeft:8, flexShrink:0,
+            fontSize: 12, fontWeight: 600,
+            marginLeft: 8, flexShrink: 0,
           }}>
             {len}/10
           </span>
         </div>
         {len > 0 && len < 10 && (
-          <p style={{ color:C.red, fontSize:11, margin:"4px 0 0 2px" }}>
+          <p style={{ color: C.red, fontSize: 11, margin: "4px 0 0 2px" }}>
             Phone number must be 10 digits
           </p>
         )}
@@ -556,13 +556,13 @@ function StyledInput({
     : type;
 
   return (
-    <div style={{ marginBottom:16 }}>
+    <div style={{ marginBottom: 16 }}>
       <div style={{
-        display:"flex", alignItems:"center",
+        display: "flex", alignItems: "center",
         backgroundColor: disabled ? C.faint : C.inputBg,
-        border:`1px solid ${borderColor}`,
-        borderRadius:11, padding:"0 14px",
-        transition:"border-color .15s",
+        border: `1px solid ${borderColor}`,
+        borderRadius: 11, padding: "0 14px",
+        transition: "border-color .15s",
       }}>
         <input
           value={value}
@@ -577,10 +577,10 @@ function StyledInput({
           maxLength={maxLength}
           disabled={disabled}
           style={{
-            flex:1, background:"none", border:"none",
-            outline:"none",
+            flex: 1, background: "none", border: "none",
+            outline: "none",
             color: disabled ? C.muted : C.white,
-            fontSize:14, padding:"11px 0", caretColor:C.gold,
+            fontSize: 14, padding: "11px 0", caretColor: C.gold,
             cursor: disabled ? "not-allowed" : "text",
           }}
         />
@@ -589,9 +589,9 @@ function StyledInput({
             type="button"
             onClick={() => setShowPwd((p) => !p)}
             style={{
-              background:"none", border:"none",
-              cursor:"pointer", color:C.muted,
-              display:"flex", padding:"4px", flexShrink:0,
+              background: "none", border: "none",
+              cursor: "pointer", color: C.muted,
+              display: "flex", padding: "4px", flexShrink: 0,
             }}
           >
             <EyeIcon off={!showPwd} />
@@ -600,8 +600,8 @@ function StyledInput({
       </div>
       {showCount && maxLength && !disabled && (
         <p style={{
-          color:counterColor, fontSize:11,
-          textAlign:"right", margin:"3px 2px 0",
+          color: counterColor, fontSize: 11,
+          textAlign: "right", margin: "3px 2px 0",
         }}>
           {len}/{maxLength}
         </p>
@@ -617,15 +617,15 @@ function SelectorChip({ label, selected, onClick }) {
       type="button"
       onClick={onClick}
       style={{
-        display:"flex", alignItems:"center", gap:6,
+        display: "flex", alignItems: "center", gap: 6,
         backgroundColor: selected ? C.gold : C.inputBg,
-        border:`1px solid ${selected ? C.gold : C.border}`,
-        borderRadius:10, padding:"9px 16px",
-        cursor:"pointer",
+        border: `1px solid ${selected ? C.gold : C.border}`,
+        borderRadius: 10, padding: "9px 16px",
+        cursor: "pointer",
         fontWeight: selected ? 700 : 400,
-        fontSize:13,
+        fontSize: 13,
         color: selected ? "#000" : C.muted,
-        transition:"all .15s", whiteSpace:"nowrap",
+        transition: "all .15s", whiteSpace: "nowrap",
       }}
     >
       {selected && (
@@ -647,12 +647,12 @@ function UploadButton({ icon, label, hint, selected, onChange, accept, preview }
     <div
       onClick={() => inputRef.current?.click()}
       style={{
-        display:"flex", alignItems:"center", gap:14,
+        display: "flex", alignItems: "center", gap: 14,
         backgroundColor: selected ? "rgba(201,162,39,0.08)" : C.inputBg,
-        border:`1px solid ${selected ? C.borderGold : C.border}`,
-        borderRadius:13, padding:"14px 16px",
-        cursor:"pointer", marginBottom:12,
-        transition:"all .15s",
+        border: `1px solid ${selected ? C.borderGold : C.border}`,
+        borderRadius: 13, padding: "14px 16px",
+        cursor: "pointer", marginBottom: 12,
+        transition: "all .15s",
       }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = C.gold)}
       onMouseLeave={(e) =>
@@ -663,45 +663,45 @@ function UploadButton({ icon, label, hint, selected, onChange, accept, preview }
         ref={inputRef}
         type="file"
         accept={accept}
-        style={{ display:"none" }}
+        style={{ display: "none" }}
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) onChange(file);
         }}
       />
       <div style={{
-        width:52, height:52, borderRadius:10,
+        width: 52, height: 52, borderRadius: 10,
         backgroundColor: selected ? "rgba(201,162,39,0.15)" : C.faint,
-        border:`1px solid ${selected ? C.borderGold : C.border}`,
-        display:"flex", alignItems:"center",
-        justifyContent:"center", flexShrink:0,
-        overflow:"hidden",
+        border: `1px solid ${selected ? C.borderGold : C.border}`,
+        display: "flex", alignItems: "center",
+        justifyContent: "center", flexShrink: 0,
+        overflow: "hidden",
       }}>
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={preview} alt="preview"
-            style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <span style={{ color: selected ? C.gold : C.muted }}>{icon}</span>
         )}
       </div>
-      <div style={{ flex:1, minWidth:0 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
           color: selected ? C.white : C.muted,
           fontWeight: selected ? 700 : 400,
-          fontSize:14, margin:"0 0 3px",
+          fontSize: 14, margin: "0 0 3px",
         }}>
           {label}
         </p>
         <p style={{
-          color:C.muted, fontSize:11, margin:0,
-          overflow:"hidden", textOverflow:"ellipsis",
-          whiteSpace:"nowrap",
+          color: C.muted, fontSize: 11, margin: 0,
+          overflow: "hidden", textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         }}>
           {hint}
         </p>
       </div>
-      <span style={{ color: selected ? C.gold : C.muted, flexShrink:0 }}>
+      <span style={{ color: selected ? C.gold : C.muted, flexShrink: 0 }}>
         {selected ? <CheckCircleIcon /> : <UploadIcon size={18} />}
       </span>
     </div>
@@ -714,54 +714,54 @@ function ToggleRow({ icon, label, description, value, onToggle }) {
     <div
       onClick={onToggle}
       style={{
-        display:"flex", alignItems:"center",
-        justifyContent:"space-between",
+        display: "flex", alignItems: "center",
+        justifyContent: "space-between",
         backgroundColor: value ? "rgba(201,162,39,0.06)" : C.inputBg,
-        border:`1px solid ${value ? C.borderGold : C.border}`,
-        borderRadius:13, padding:"14px 16px",
-        cursor:"pointer", marginBottom:12,
-        transition:"all .15s", gap:12,
+        border: `1px solid ${value ? C.borderGold : C.border}`,
+        borderRadius: 13, padding: "14px 16px",
+        cursor: "pointer", marginBottom: 12,
+        transition: "all .15s", gap: 12,
       }}
     >
       <div style={{
-        display:"flex", alignItems:"center",
-        gap:12, flex:1, minWidth:0,
+        display: "flex", alignItems: "center",
+        gap: 12, flex: 1, minWidth: 0,
       }}>
         <div style={{
-          width:38, height:38, borderRadius:"50%",
+          width: 38, height: 38, borderRadius: "50%",
           backgroundColor: value ? "rgba(201,162,39,0.12)" : C.faint,
-          border:`1px solid ${value ? C.borderGold : C.border}`,
-          display:"flex", alignItems:"center",
-          justifyContent:"center", flexShrink:0,
+          border: `1px solid ${value ? C.borderGold : C.border}`,
+          display: "flex", alignItems: "center",
+          justifyContent: "center", flexShrink: 0,
           color: value ? C.gold : C.muted,
         }}>
           {icon}
         </div>
-        <div style={{ minWidth:0 }}>
+        <div style={{ minWidth: 0 }}>
           <p style={{
             color: value ? C.white : C.muted,
             fontWeight: value ? 700 : 500,
-            fontSize:14, margin:"0 0 3px",
+            fontSize: 14, margin: "0 0 3px",
           }}>
             {label}
           </p>
-          <p style={{ color:C.muted, fontSize:11, margin:0, lineHeight:1.5 }}>
+          <p style={{ color: C.muted, fontSize: 11, margin: 0, lineHeight: 1.5 }}>
             {description}
           </p>
         </div>
       </div>
       <div style={{
-        width:44, height:24, borderRadius:100,
+        width: 44, height: 24, borderRadius: 100,
         backgroundColor: value ? C.gold : C.faint,
-        display:"flex", alignItems:"center",
-        padding:"0 3px", flexShrink:0,
-        transition:"background-color .2s",
+        display: "flex", alignItems: "center",
+        padding: "0 3px", flexShrink: 0,
+        transition: "background-color .2s",
       }}>
         <div style={{
-          width:18, height:18, borderRadius:"50%",
-          backgroundColor:C.white,
+          width: 18, height: 18, borderRadius: "50%",
+          backgroundColor: C.white,
           marginLeft: value ? "auto" : 0,
-          transition:"margin .2s",
+          transition: "margin .2s",
         }} />
       </div>
     </div>
@@ -772,16 +772,16 @@ function ToggleRow({ icon, label, description, value, onToggle }) {
 function LoadingScreen() {
   return (
     <div style={{
-      minHeight:"100vh", backgroundColor:C.bg,
-      display:"flex", flexDirection:"column",
-      alignItems:"center", justifyContent:"center",
-      gap:12,
+      minHeight: "100vh", backgroundColor: C.bg,
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      gap: 12,
     }}>
       <Spinner size={36} color={C.gold} />
       <p style={{
-        fontSize:11, letterSpacing:"3px",
-        fontWeight:600, textTransform:"uppercase",
-        margin:0, color:C.muted,
+        fontSize: 11, letterSpacing: "3px",
+        fontWeight: 600, textTransform: "uppercase",
+        margin: 0, color: C.muted,
       }}>
         Loading
       </p>
@@ -791,39 +791,39 @@ function LoadingScreen() {
 
 // ─── Main EditStaffScreen ─────────────────────────────────────────────────────
 export default function EditStaffScreen({ user }) {
-  const router      = useRouter();
+  const router = useRouter();
   const permissions = useAuthStore((s) => s.permissions);
 
   // ── Form state ─────────────────────────────────────────────────────────────
-  const [name,       setName]       = useState("");
-  const [mobile,     setMobile]     = useState("");
-  const [email,      setEmail]      = useState("");
-  const [password,   setPassword]   = useState("");
+  const [name, setName] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [shiftStart, setShiftStart] = useState("");
-  const [shiftEnd,   setShiftEnd]   = useState("");
+  const [shiftEnd, setShiftEnd] = useState("");
 
   // ── Roles + Sites ──────────────────────────────────────────────────────────
-  const [roles,         setRoles]         = useState([]);
-  const [sites,         setSites]         = useState([]);
-  const [selectedRole,  setSelectedRole]  = useState(null);
+  const [roles, setRoles] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [selectedRole, setSelectedRole] = useState(null);
   const [selectedSites, setSelectedSites] = useState([]);
 
   // ── Files ──────────────────────────────────────────────────────────────────
-  const [profilePhoto,       setProfilePhoto]       = useState(null);
-  const [idProof,            setIdProof]            = useState(null);
-  const [profilePreview,     setProfilePreview]     = useState(null);
-  const [idPreview,          setIdPreview]          = useState(null);
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [idProof, setIdProof] = useState(null);
+  const [profilePreview, setProfilePreview] = useState(null);
+  const [idPreview, setIdPreview] = useState(null);
   const [existingProfileUrl, setExistingProfileUrl] = useState(null);
   const [existingIdProofUrl, setExistingIdProofUrl] = useState(null);
 
   // ── Toggles ────────────────────────────────────────────────────────────────
   const [allowSelfPhotoUpload, setAllowSelfPhotoUpload] = useState(false);
-  const [allowSelfIdUpload,    setAllowSelfIdUpload]    = useState(false);
+  const [allowSelfIdUpload, setAllowSelfIdUpload] = useState(false);
 
   // ── UI state ───────────────────────────────────────────────────────────────
-  const [saving,         setSaving]         = useState(false);
+  const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [toast,          setToast]          = useState(null);
+  const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
   // ── Toast helpers ──────────────────────────────────────────────────────────
@@ -896,14 +896,14 @@ export default function EditStaffScreen({ user }) {
   if (!user) {
     return (
       <div style={{
-        minHeight:"100vh", backgroundColor:C.bg,
-        display:"flex", flexDirection:"column",
-        alignItems:"center", justifyContent:"center", gap:12,
+        minHeight: "100vh", backgroundColor: C.bg,
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", gap: 12,
       }}>
-        <span style={{ color:C.muted }}>
+        <span style={{ color: C.muted }}>
           <PersonIcon size={48} />
         </span>
-        <p style={{ color:C.muted, fontSize:15, margin:0 }}>
+        <p style={{ color: C.muted, fontSize: 15, margin: 0 }}>
           No user found
         </p>
       </div>
@@ -964,20 +964,20 @@ export default function EditStaffScreen({ user }) {
     try {
       setSaving(true);
       const formData = new FormData();
-      formData.append("name",  name.trim());
-      if (mobile)     formData.append("mobile",        mobile);
+      formData.append("name", name.trim());
+      if (mobile) formData.append("mobile", mobile);
       formData.append("email", email?.trim() ?? "");
-      if (password)   formData.append("password",      password);
+      if (password) formData.append("password", password);
       if (shiftStart) formData.append("shiftStartTime", shiftStart);
-      if (shiftEnd)   formData.append("shiftEndTime",   shiftEnd);
+      if (shiftEnd) formData.append("shiftEndTime", shiftEnd);
       if (selectedRole)
         formData.append("roleIds", JSON.stringify([selectedRole]));
       if (selectedSites.length > 0)
         formData.append("locationIds", JSON.stringify(selectedSites));
       formData.append("allowSelfPhotoUpload", String(allowSelfPhotoUpload));
-      formData.append("allowSelfIdUpload",    String(allowSelfIdUpload));
+      formData.append("allowSelfIdUpload", String(allowSelfIdUpload));
       if (profilePhoto) formData.append("profilePhoto", profilePhoto);
-      if (idProof)      formData.append("idProof",      idProof);
+      if (idProof) formData.append("idProof", idProof);
 
       const updatedUser = await updateUser(user.id, formData);
       showToast(`Staff "${updatedUser.username}" updated successfully`);
@@ -1021,7 +1021,7 @@ export default function EditStaffScreen({ user }) {
       : "Image or PDF — max 10 MB";
 
   const profileSelected = !!profilePhoto || !!existingProfileUrl;
-  const idSelected      = !!idProof      || !!existingIdProofUrl;
+  const idSelected = !!idProof || !!existingIdProofUrl;
 
   // ──────────────────────────────────────────────────────────────────────────
   return (
@@ -1140,40 +1140,40 @@ export default function EditStaffScreen({ user }) {
               className="back-btn"
               onClick={() => router.push("/settings/staff")}
               style={{
-                display:"flex", alignItems:"center", gap:5,
-                backgroundColor:C.faint,
-                border:`1px solid ${C.borderGold}`,
-                borderRadius:10, padding:"7px 12px",
-                color:C.gold, fontWeight:600, fontSize:13,
-                cursor:"pointer", flexShrink:0,
-                transition:"filter .15s",
+                display: "flex", alignItems: "center", gap: 5,
+                backgroundColor: C.faint,
+                border: `1px solid ${C.borderGold}`,
+                borderRadius: 10, padding: "7px 12px",
+                color: C.gold, fontWeight: 600, fontSize: 13,
+                cursor: "pointer", flexShrink: 0,
+                transition: "filter .15s",
               }}
             >
               <ArrowLeftIcon />
               <span className="hide-sm">Back</span>
             </button>
 
-            <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{
-                color:C.gold, fontSize:10, fontWeight:700,
-                letterSpacing:"3px", textTransform:"uppercase",
-                margin:"0 0 3px",
+                color: C.gold, fontSize: 10, fontWeight: 700,
+                letterSpacing: "3px", textTransform: "uppercase",
+                margin: "0 0 3px",
               }}>
                 Staff Management
               </p>
               <h1 style={{
-                color:C.white,
-                fontSize:"clamp(20px, 4vw, 28px)",
-                fontWeight:800, letterSpacing:"-0.3px",
-                margin:0, lineHeight:1,
+                color: C.white,
+                fontSize: "clamp(20px, 4vw, 28px)",
+                fontWeight: 800, letterSpacing: "-0.3px",
+                margin: 0, lineHeight: 1,
               }}>
                 Edit Staff Member
               </h1>
             </div>
 
-            <div style={{ display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
-              <span style={{ color:C.red, fontWeight:800, fontSize:14 }}>*</span>
-              <span style={{ color:C.muted, fontSize:12 }}>Required</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+              <span style={{ color: C.red, fontWeight: 800, fontSize: 14 }}>*</span>
+              <span style={{ color: C.muted, fontSize: 12 }}>Required</span>
             </div>
           </div>
 
@@ -1246,7 +1246,7 @@ export default function EditStaffScreen({ user }) {
               maxLength={LIMITS.password.max} showCount
             />
             {password.length > 0 && password.length < LIMITS.password.min && (
-              <p style={{ color:C.red, fontSize:11, margin:"-10px 0 12px 2px" }}>
+              <p style={{ color: C.red, fontSize: 11, margin: "-10px 0 12px 2px" }}>
                 Password must be at least {LIMITS.password.min} characters
               </p>
             )}
@@ -1285,21 +1285,24 @@ export default function EditStaffScreen({ user }) {
             </div>
 
             {/* ── ROLE ── */}
+            {/* ── ROLE ── */}
             {roles.length > 0 && (
               <>
                 <SectionHeader icon={<ShieldIcon size={16} />} title="Role" />
-                <p style={{ color:C.muted, fontSize:12, margin:"0 0 14px", lineHeight:1.6 }}>
+                <p style={{ color: C.muted, fontSize: 12, margin: "0 0 14px", lineHeight: 1.6 }}>
                   Controls what this staff member can access in the system
                 </p>
                 <div className="chip-wrap">
-                  {roles.map((role) => (
-                    <SelectorChip
-                      key={role.id}
-                      label={role.name}
-                      selected={selectedRole === role.id}
-                      onClick={() => setSelectedRole(role.id)}
-                    />
-                  ))}
+                  {roles
+                    .filter((role) => role.name?.toLowerCase() !== "owner")
+                    .map((role) => (
+                      <SelectorChip
+                        key={role.id}
+                        label={role.name}
+                        selected={selectedRole === role.id}
+                        onClick={() => setSelectedRole(role.id)}
+                      />
+                    ))}
                 </div>
               </>
             )}
@@ -1311,7 +1314,7 @@ export default function EditStaffScreen({ user }) {
                   icon={<LocationPinIcon size={16} />}
                   title="Assign Location"
                 />
-                <p style={{ color:C.muted, fontSize:12, margin:"0 0 14px", lineHeight:1.6 }}>
+                <p style={{ color: C.muted, fontSize: 12, margin: "0 0 14px", lineHeight: 1.6 }}>
                   Select one or more sites for attendance tracking
                 </p>
                 <div className="chip-wrap">
@@ -1329,7 +1332,7 @@ export default function EditStaffScreen({ user }) {
 
             {/* ── DOCUMENTS ── */}
             <SectionHeader icon={<DocumentIcon size={16} />} title="Documents" />
-            <p style={{ color:C.muted, fontSize:12, margin:"0 0 14px", lineHeight:1.6 }}>
+            <p style={{ color: C.muted, fontSize: 12, margin: "0 0 14px", lineHeight: 1.6 }}>
               Replace existing files by uploading new ones —
               leave unchanged to keep current
             </p>
@@ -1360,13 +1363,13 @@ export default function EditStaffScreen({ user }) {
             />
 
             {/* ── SELF-UPLOAD PERMISSIONS ── */}
-            <div style={{ height:1, backgroundColor:C.border, margin:"24px 0" }} />
+            <div style={{ height: 1, backgroundColor: C.border, margin: "24px 0" }} />
 
             <SectionHeader
               icon={<CloudUploadIcon size={16} />}
               title="Self Upload"
             />
-            <p style={{ color:C.muted, fontSize:12, margin:"0 0 14px", lineHeight:1.6 }}>
+            <p style={{ color: C.muted, fontSize: 12, margin: "0 0 14px", lineHeight: 1.6 }}>
               Allow this staff member to upload their own documents from the app
             </p>
 
@@ -1387,7 +1390,7 @@ export default function EditStaffScreen({ user }) {
               />
             </div>
 
-            <div style={{ height:1, backgroundColor:C.border, margin:"24px 0" }} />
+            <div style={{ height: 1, backgroundColor: C.border, margin: "24px 0" }} />
 
             {/* ── SAVE BUTTON ── */}
             <button
@@ -1395,16 +1398,16 @@ export default function EditStaffScreen({ user }) {
               onClick={handleUpdate}
               disabled={saving}
               style={{
-                width:"100%",
-                display:"flex", alignItems:"center",
-                justifyContent:"center", gap:8,
+                width: "100%",
+                display: "flex", alignItems: "center",
+                justifyContent: "center", gap: 8,
                 backgroundColor: saving ? C.faint : C.gold,
-                border:"none", borderRadius:13,
-                padding:"15px 0",
+                border: "none", borderRadius: 13,
+                padding: "15px 0",
                 color: saving ? C.muted : "#000",
-                fontWeight:800, fontSize:14,
-                letterSpacing:"0.5px",
-                textTransform:"uppercase",
+                fontWeight: 800, fontSize: 14,
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
                 cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.7 : 1,
                 boxShadow: saving
@@ -1427,19 +1430,19 @@ export default function EditStaffScreen({ user }) {
 
             {/* ── Powered By ── */}
             <div style={{
-              display:"flex", alignItems:"center",
-              justifyContent:"center",
-              gap:8, marginTop:32,
+              display: "flex", alignItems: "center",
+              justifyContent: "center",
+              gap: 8, marginTop: 32,
             }}>
-              <div style={{ height:1, width:16, backgroundColor:"rgba(201,162,39,0.3)" }} />
+              <div style={{ height: 1, width: 16, backgroundColor: "rgba(201,162,39,0.3)" }} />
               <span style={{
-                color:"rgba(201,162,39,0.5)",
-                fontSize:10, fontWeight:500,
-                letterSpacing:"3px", textTransform:"uppercase",
+                color: "rgba(201,162,39,0.5)",
+                fontSize: 10, fontWeight: 500,
+                letterSpacing: "3px", textTransform: "uppercase",
               }}>
                 Powered by FeathrTech
               </span>
-              <div style={{ height:1, width:16, backgroundColor:"rgba(201,162,39,0.3)" }} />
+              <div style={{ height: 1, width: 16, backgroundColor: "rgba(201,162,39,0.3)" }} />
             </div>
 
           </div>{/* end card-body */}

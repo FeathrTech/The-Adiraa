@@ -689,6 +689,7 @@ export default function EditStaffScreen() {
             </View>
 
             {/* ── ROLE ── */}
+            {/* ── ROLE ── */}
             {roles.length > 0 && (
               <>
                 <SectionHeader title={t("staff.role", "Role")} icon="shield-outline" cvw={cvw} isTablet={isTablet} />
@@ -697,16 +698,20 @@ export default function EditStaffScreen() {
                 </Text>
                 {isTablet ? (
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: cvw * 1.5, marginBottom: cvw * 2 }}>
-                    {roles.map((role) => (
-                      <View key={role.id} style={{ minWidth: "30%" }}>
-                        <SelectorChip label={role.name} selected={selectedRole === role.id} onPress={() => setSelectedRole(role.id)} cvw={cvw} isTablet={isTablet} />
-                      </View>
-                    ))}
+                    {roles
+                      .filter((role) => role.name?.toLowerCase() !== "owner")
+                      .map((role) => (
+                        <View key={role.id} style={{ minWidth: "30%" }}>
+                          <SelectorChip label={role.name} selected={selectedRole === role.id} onPress={() => setSelectedRole(role.id)} cvw={cvw} isTablet={isTablet} />
+                        </View>
+                      ))}
                   </View>
                 ) : (
-                  roles.map((role) => (
-                    <SelectorChip key={role.id} label={role.name} selected={selectedRole === role.id} onPress={() => setSelectedRole(role.id)} cvw={cvw} isTablet={isTablet} />
-                  ))
+                  roles
+                    .filter((role) => role.name?.toLowerCase() !== "owner")
+                    .map((role) => (
+                      <SelectorChip key={role.id} label={role.name} selected={selectedRole === role.id} onPress={() => setSelectedRole(role.id)} cvw={cvw} isTablet={isTablet} />
+                    ))
                 )}
               </>
             )}
